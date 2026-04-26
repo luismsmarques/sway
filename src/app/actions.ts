@@ -512,35 +512,39 @@ export async function respondReconfirmationAction(input: {
 }
 
 export async function getSettingsDataAction() {
-  const owner = await requireOwnerProfile();
+  try {
+    const owner = await requireOwnerProfile();
 
-  const templates = await prisma.template.findMany({
-    where: { ownerId: owner.id },
-    orderBy: { createdAt: "asc" },
-  });
+    const templates = await prisma.template.findMany({
+      where: { ownerId: owner.id },
+      orderBy: { createdAt: "asc" },
+    });
 
-  const settings =
-    typeof owner.settings === "object" && owner.settings ? owner.settings : {};
+    const settings =
+      typeof owner.settings === "object" && owner.settings ? owner.settings : {};
 
-  return {
-    profile: {
-      id: owner.id,
-      name: owner.name,
-      slug: owner.slug,
-      avatarUrl: owner.avatarUrl,
-      bio: "bio" in settings ? String(settings.bio ?? "") : "",
-      instagramUrl: "instagramUrl" in settings ? String(settings.instagramUrl ?? "") : "",
-      websiteUrl: "websiteUrl" in settings ? String(settings.websiteUrl ?? "") : "",
-    },
-    templates: templates.map((template) => ({
-      id: template.id,
-      title: template.title,
-      type: template.type,
-      durationMins: template.durationMins,
-      capacity: template.capacity,
-      price: Number(template.price),
-    })),
-  };
+    return {
+      profile: {
+        id: owner.id,
+        name: owner.name,
+        slug: owner.slug,
+        avatarUrl: owner.avatarUrl,
+        bio: "bio" in settings ? String(settings.bio ?? "") : "",
+        instagramUrl: "instagramUrl" in settings ? String(settings.instagramUrl ?? "") : "",
+        websiteUrl: "websiteUrl" in settings ? String(settings.websiteUrl ?? "") : "",
+      },
+      templates: templates.map((template) => ({
+        id: template.id,
+        title: template.title,
+        type: template.type,
+        durationMins: template.durationMins,
+        capacity: template.capacity,
+        price: Number(template.price),
+      })),
+    };
+  } catch (error) {
+    throw error;
+  }
 }
 
 export async function updateProfileSettingsAction(input: {

@@ -316,6 +316,12 @@ Isto protege contra overbooking em concorrencia.
 
 ## Release Notes
 
+### 2026-04-26 - Debug Instrumentation Cleanup
+
+- Removida toda a instrumentacao temporaria de debug adicionada durante a investigacao de loading e auth em settings.
+- Limpeza dos hooks de logging no client (`/dashboard/settings`) e server actions (`getSettingsDataAction`).
+- Validacao final de estabilidade com `npm run build` concluido com sucesso apos a limpeza.
+
 ### 2026-04-26 - UI Shell + Dashboard/Booking Redesign
 
 - Nova shell global com layout centralizado (`max-w-4xl`) e base visual premium (`bg-[#F9FAFB]`).

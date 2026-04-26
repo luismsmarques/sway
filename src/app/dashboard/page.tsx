@@ -106,21 +106,28 @@ export default function InstructorDashboardPage() {
 
   const reload = async () => {
     setIsLoading(true);
-    const data = await getDashboardData();
-    setSlots(
-      data.slots.map((s) => ({
-        ...s,
-        start: new Date(s.start),
-        end: new Date(s.end),
-      })),
-    );
-    setTemplates(data.templates as Template[]);
-    if (!selectedTemplateId && data.templates.length > 0) {
-      setSelectedTemplateId(data.templates[0].id);
+    try {
+      const data = await getDashboardData();
+      setSlots(
+        data.slots.map((s) => ({
+          ...s,
+          start: new Date(s.start),
+          end: new Date(s.end),
+        })),
+      );
+      setTemplates(data.templates as Template[]);
+      if (!selectedTemplateId && data.templates.length > 0) {
+        setSelectedTemplateId(data.templates[0].id);
+      }
+      setBookings(data.bookings as Booking[]);
+      setStudents(data.students as Student[]);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Falha ao carregar dashboard.";
+      setErrorMessage(message);
+    } finally {
+      setIsLoading(false);
     }
-    setBookings(data.bookings as Booking[]);
-    setStudents(data.students as Student[]);
-    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -258,23 +265,26 @@ export default function InstructorDashboardPage() {
     <main className="min-h-screen bg-[#F9FAFB] pb-24">
       <MobileAppHeader title="Agenda" />
       <div className={`${uiShell.page} py-4 sm:py-6`}>
-        {isLoading ? <MobileSkeletonCard /> : null}
-        <section className={uiShell.card}>
-          <DashboardHeader formattedDate={dayLabel.format(selectedDay)} />
-          <DashboardActionBar
-            quickFilter={quickFilter}
-            selectedDateValue={startOfDay(selectedDay).toISOString().slice(0, 10)}
-            onFilterChange={setQuickFilter}
-            onDateChange={(value) => setSelectedDay(new Date(value))}
-            onAddSlot={() => setIsDrawerOpen(true)}
-          />
-          <AgendaSlotList
-            slots={filteredSlots}
-            formatTime={(date) => timeLabel.format(date)}
-            badgeStyles={badgeStyles}
-            onOpenDetails={setDetailsSlotId}
-          />
-        </section>
+        {isLoading ? (
+          <MobileSkeletonCard />
+        ) : (
+          <section className={uiShell.card}>
+            <DashboardHeader formattedDate={dayLabel.format(selectedDay)} />
+            <DashboardActionBar
+              quickFilter={quickFilter}
+              selectedDateValue={startOfDay(selectedDay).toISOString().slice(0, 10)}
+              onFilterChange={setQuickFilter}
+              onDateChange={(value) => setSelectedDay(new Date(value))}
+              onAddSlot={() => setIsDrawerOpen(true)}
+            />
+            <AgendaSlotList
+              slots={filteredSlots}
+              formatTime={(date) => timeLabel.format(date)}
+              badgeStyles={badgeStyles}
+              onOpenDetails={setDetailsSlotId}
+            />
+          </section>
+        )}
       </div>
 
       <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>

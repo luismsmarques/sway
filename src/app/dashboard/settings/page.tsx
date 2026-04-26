@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useState, useTransition } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { useRouter } from "next/navigation";
 import {
   createTemplateSettingsAction,
   deleteTemplateSettingsAction,
@@ -70,6 +71,7 @@ function toEditable(template: SettingsTemplate): EditableTemplate {
 }
 
 export default function DashboardSettingsPage() {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,16 +91,30 @@ export default function DashboardSettingsPage() {
 
   const load = async () => {
     setIsLoading(true);
-    const data = (await getSettingsDataAction()) as SettingsData;
-    setProfileId(data.profile.id);
-    setName(data.profile.name);
-    setSlug(data.profile.slug);
-    setBio(data.profile.bio);
-    setInstagramUrl(data.profile.instagramUrl);
-    setWebsiteUrl(data.profile.websiteUrl);
-    setAvatarUrl(data.profile.avatarUrl);
-    setTemplates(data.templates.map(toEditable));
-    setIsLoading(false);
+    try {
+      const data = (await getSettingsDataAction()) as SettingsData;
+      setProfileId(data.profile.id);
+      setName(data.profile.name);
+      setSlug(data.profile.slug);
+      setBio(data.profile.bio);
+      setInstagramUrl(data.profile.instagramUrl);
+      setWebsiteUrl(data.profile.websiteUrl);
+      setAvatarUrl(data.profile.avatarUrl);
+      setTemplates(data.templates.map(toEditable));
+    } catch (error) {
+      const rawMessage =
+        error instanceof Error ? error.message : "Falha ao carregar settings.";
+      const isAuthError = rawMessage.trim() === "Sessao invalida. Inicia sessao novamente.";
+      const message = isAuthError
+        ? rawMessage
+        : "Falha ao carregar settings. Verifica DATABASE_URL e sessao ativa.";
+      setErrorMessage(message);
+      if (isAuthError) {
+        router.replace("/login");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
