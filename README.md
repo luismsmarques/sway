@@ -10,7 +10,9 @@ Motor de reservas mobile-first para profissionais independentes (Surf, Yoga, PT)
 
 Funcionalidades principais implementadas:
 
-- Dashboard do instrutor com feed cronologico.
+- Landing page de marketing em `/`.
+- Autenticacao com Supabase Auth (login/registo).
+- Dashboard protegido em `/dashboard` com isolamento por instrutor.
 - Criacao de slots via drawer e botao flutuante.
 - Deteccao visual de conflitos de horario.
 - Gestao de inscritos por slot (detalhe de aula, remocao, cancelamento de aula).
@@ -35,7 +37,10 @@ Funcionalidades principais implementadas:
 ```txt
 src/
   app/
-    page.tsx                 # Dashboard do instrutor
+    page.tsx                 # Landing page (marketing)
+    dashboard/page.tsx       # Dashboard do instrutor (protegido)
+    auth/login/page.tsx      # Login
+    auth/register/page.tsx   # Registo
     book/[slug]/page.tsx     # Pagina publica de reservas
     templates/new/page.tsx   # UI de criacao de templates
     actions.ts               # Server Actions e transacoes Prisma
@@ -62,16 +67,18 @@ Regras chave:
 - `slots.current_capacity <= slots.max_capacity`
 - reserva atomica (capacidade + booking na mesma transacao)
 - tracking de aluno por telemovel por instrutor
+- isolamento multi-tenant por `profiles.user_id` + RLS
 
 ## Fluxos principais
 
 ### 1) Instrutor
 
-1. Criar/selecionar template
-2. Criar slot no dashboard
-3. Ver inscritos no detalhe da aula
-4. Remover aluno (liberta vaga)
-5. Cancelar aula (marca bookings `CANCELED` e remove slot)
+1. Criar conta / iniciar sessao
+2. Criar/selecionar template
+3. Criar slot no dashboard
+4. Ver inscritos no detalhe da aula
+5. Remover aluno (liberta vaga)
+6. Cancelar aula (marca bookings `CANCELED` e remove slot)
 
 ### 2) Aluno
 
@@ -80,6 +87,30 @@ Regras chave:
 3. Insere nome + telemovel
 4. Reserva confirmada
 5. Opcao de adicionar ao calendario
+
+### 3) Marketing / Aquisição
+
+1. Visita a landing em `/`
+2. Entende proposta de valor e beneficios
+3. Clica em "Comecar Agora Gratuitamente"
+4. Converte via `/auth/register`
+
+## Auth e RLS
+
+Implementado:
+
+- Supabase Auth com paginas dedicadas:
+  - `/auth/login`
+  - `/auth/register`
+- Middleware de protecao:
+  - `/dashboard` exige sessao ativa
+  - utilizador autenticado em `/auth/*` e redirecionado para `/dashboard`
+- Perfil automatico no primeiro login/registo:
+  - cria `profiles` com `user_id`, `name`, `slug` unico
+- RLS aplicado em:
+  - `profiles`, `templates`, `slots`, `students`, `bookings`
+
+Objetivo: cada instrutor so acede aos seus proprios dados.
 
 ## Transacoes e consistencia
 
@@ -136,6 +167,8 @@ SUPABASE_SERVICE_ROLE_KEY=
 ### 4) Aplicar schema no Supabase
 
 Executar `supabase/schema.sql` no SQL Editor do Supabase.
+
+> Se ja existirem tabelas antigas, aplica migracao incremental (sem recriar).
 
 ### 5) Gerar Prisma Client
 
@@ -197,10 +230,8 @@ Isto protege contra overbooking em concorrencia.
 
 ## Roadmap
 
-- Autenticacao completa do instrutor
 - CRUD real de templates (sem mocks)
 - Integracao SMS (Twilio) para reagendamentos
-- Politicas de seguranca (RLS) no Supabase
 - Testes automatizados E2E dos fluxos criticos
 
 ## Licenca
