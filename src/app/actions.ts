@@ -2,16 +2,64 @@
 
 import { BookingStatus, TemplateType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export async function getDashboardData(ownerSlug = "joao-surf") {
-  const owner = await prisma.profile.findUnique({
-    where: { slug: ownerSlug },
-  });
-  if (!owner) {
-    return { owner: null, slots: [], bookings: [], students: [] };
+async function requireOwnerProfile() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("Sessao invalida. Inicia sessao novamente.");
   }
 
-  const [slots, bookings, students] = await Promise.all([
+  const existing = await prisma.profile.findUnique({
+    where: { userId: user.id },
+  });
+  if (existing) {
+    return existing;
+  }
+
+  const emailPrefix = user.email?.split("@")[0] ?? "instrutor";
+  const fullName =
+    typeof user.user_metadata?.full_name === "string"
+      ? user.user_metadata.full_name
+      : emailPrefix;
+
+  let slugBase = emailPrefix
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (!slugBase) {
+    slugBase = "instrutor";
+  }
+
+  let slug = slugBase;
+  let suffix = 1;
+  while (await prisma.profile.findUnique({ where: { slug } })) {
+    suffix += 1;
+    slug = `${slugBase}-${suffix}`;
+  }
+
+  return prisma.profile.create({
+    data: {
+      userId: user.id,
+      name: fullName,
+      slug,
+      settings: {},
+    },
+  });
+}
+
+export async function getDashboardData() {
+  const owner = await requireOwnerProfile();
+
+  const [templates, slots, bookings, students] = await Promise.all([
+    prisma.template.findMany({
+      where: { ownerId: owner.id },
+      orderBy: { createdAt: "asc" },
+    }),
     prisma.slot.findMany({
       where: { ownerId: owner.id },
       include: { template: true },
@@ -32,6 +80,12 @@ export async function getDashboardData(ownerSlug = "joao-surf") {
 
   return {
     owner: { id: owner.id, slug: owner.slug, name: owner.name },
+    templates: templates.map((template) => ({
+      id: template.id,
+      title: template.title,
+      durationMins: template.durationMins,
+      type: template.type,
+    })),
     slots: slots.map((slot) => ({
       id: slot.id,
       ownerId: slot.ownerId,
@@ -63,15 +117,8 @@ export async function getDashboardData(ownerSlug = "joao-surf") {
   };
 }
 
-export async function createSlotAction(input: {
-  ownerSlug: string;
-  templateId: string;
-  startAtISO: string;
-}) {
-  const owner = await prisma.profile.findUnique({ where: { slug: input.ownerSlug } });
-  if (!owner) {
-    throw new Error("Perfil do instrutor nao encontrado.");
-  }
+export async function createSlotAction(input: { templateId: string; startAtISO: string }) {
+  const owner = await requireOwnerProfile();
 
   const template = await prisma.template.findFirst({
     where: { id: input.templateId, ownerId: owner.id },
@@ -97,6 +144,8 @@ export async function createSlotAction(input: {
 }
 
 export async function removeBookingFromSlotAction(input: { bookingId: string }) {
+  const owner = await requireOwnerProfile();
+
   await prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({
       where: { id: input.bookingId },
@@ -104,6 +153,9 @@ export async function removeBookingFromSlotAction(input: { bookingId: string }) 
     });
     if (!booking) {
       throw new Error("Booking nao encontrado.");
+    }
+    if (booking.slot.ownerId !== owner.id) {
+      throw new Error("Sem permissao para remover este inscrito.");
     }
 
     await tx.booking.delete({
@@ -122,7 +174,14 @@ export async function removeBookingFromSlotAction(input: { bookingId: string }) 
 }
 
 export async function cancelClassAction(input: { slotId: string }) {
+  const owner = await requireOwnerProfile();
+
   await prisma.$transaction(async (tx) => {
+    const slot = await tx.slot.findUnique({ where: { id: input.slotId } });
+    if (!slot || slot.ownerId !== owner.id) {
+      throw new Error("Sem permissao para cancelar esta aula.");
+    }
+
     await tx.booking.updateMany({
       where: { slotId: input.slotId },
       data: { status: BookingStatus.CANCELED },
@@ -134,7 +193,14 @@ export async function cancelClassAction(input: { slotId: string }) {
 }
 
 export async function deleteSlotAction(input: { slotId: string }) {
+  const owner = await requireOwnerProfile();
+
   await prisma.$transaction(async (tx) => {
+    const slot = await tx.slot.findUnique({ where: { id: input.slotId } });
+    if (!slot || slot.ownerId !== owner.id) {
+      throw new Error("Sem permissao para eliminar este slot.");
+    }
+
     await tx.booking.deleteMany({
       where: { slotId: input.slotId },
     });

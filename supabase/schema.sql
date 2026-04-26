@@ -16,6 +16,7 @@ end $$;
 
 create table if not exists profiles (
   id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references auth.users(id) on delete cascade,
   name text not null,
   slug text not null unique,
   avatar_url text,
@@ -23,6 +24,9 @@ create table if not exists profiles (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table profiles add column if not exists user_id uuid references auth.users(id) on delete cascade;
+create unique index if not exists idx_profiles_user_id on profiles(user_id);
 
 create table if not exists templates (
   id uuid primary key default gen_random_uuid(),
@@ -113,3 +117,89 @@ drop trigger if exists trg_bookings_updated_at on bookings;
 create trigger trg_bookings_updated_at
 before update on bookings
 for each row execute function set_updated_at();
+
+alter table profiles enable row level security;
+alter table templates enable row level security;
+alter table slots enable row level security;
+alter table students enable row level security;
+alter table bookings enable row level security;
+
+drop policy if exists profiles_select_own on profiles;
+create policy profiles_select_own on profiles
+for select using (user_id = auth.uid());
+
+drop policy if exists profiles_update_own on profiles;
+create policy profiles_update_own on profiles
+for update using (user_id = auth.uid());
+
+drop policy if exists profiles_insert_own on profiles;
+create policy profiles_insert_own on profiles
+for insert with check (user_id = auth.uid());
+
+drop policy if exists templates_own_all on templates;
+create policy templates_own_all on templates
+for all using (
+  exists (
+    select 1 from profiles
+    where profiles.id = templates.owner_id
+      and profiles.user_id = auth.uid()
+  )
+) with check (
+  exists (
+    select 1 from profiles
+    where profiles.id = templates.owner_id
+      and profiles.user_id = auth.uid()
+  )
+);
+
+drop policy if exists slots_own_all on slots;
+create policy slots_own_all on slots
+for all using (
+  exists (
+    select 1 from profiles
+    where profiles.id = slots.owner_id
+      and profiles.user_id = auth.uid()
+  )
+) with check (
+  exists (
+    select 1 from profiles
+    where profiles.id = slots.owner_id
+      and profiles.user_id = auth.uid()
+  )
+);
+
+drop policy if exists students_own_all on students;
+create policy students_own_all on students
+for all using (
+  exists (
+    select 1 from profiles
+    where profiles.id = students.owner_id
+      and profiles.user_id = auth.uid()
+  )
+) with check (
+  exists (
+    select 1 from profiles
+    where profiles.id = students.owner_id
+      and profiles.user_id = auth.uid()
+  )
+);
+
+drop policy if exists bookings_own_all on bookings;
+create policy bookings_own_all on bookings
+for all using (
+  exists (
+    select 1
+    from slots
+    join profiles on profiles.id = slots.owner_id
+    where slots.id = bookings.slot_id
+      and profiles.user_id = auth.uid()
+  )
+) with check (
+  exists (
+    select 1
+    from slots
+    join profiles on profiles.id = slots.owner_id
+    where slots.id = bookings.slot_id
+      and profiles.user_id = auth.uid()
+  )
+);
