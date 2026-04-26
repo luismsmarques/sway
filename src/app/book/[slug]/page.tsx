@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { createBookingAction, getPublicBookingData } from "@/app/actions";
 
 type TemplateType = "PRIVATE" | "GROUP";
 
@@ -15,77 +17,9 @@ type PublicSlot = {
   currentCapacity: number; // remaining spots
 };
 
-type Booking = {
-  id: string;
-  slotId: string;
-  studentName: string;
-  studentPhone: string;
-  status: "PENDING" | "CONFIRMED" | "CANCELED";
-};
-
 const badgeStyles: Record<TemplateType, string> = {
   PRIVATE: "bg-sky-50 text-sky-700 ring-sky-200",
   GROUP: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-};
-
-const mockInstructor = {
-  "joao-surf": {
-    slug: "joao-surf",
-    name: "Joao Marques",
-    avatarUrl:
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80&auto=format&fit=crop",
-    bio: "Instrutor certificado de Surf e Treino Funcional em Cascais.",
-  },
-  "rita-yoga": {
-    slug: "rita-yoga",
-    name: "Rita Araujo",
-    avatarUrl:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80&auto=format&fit=crop",
-    bio: "Aulas de Yoga e mobilidade com foco em bem-estar diario.",
-  },
-};
-
-const initialSlotsBySlug: Record<string, PublicSlot[]> = {
-  "joao-surf": [
-    {
-      id: "s1",
-      title: "Aula Surf 90min",
-      type: "GROUP",
-      startTime: "2026-04-27T09:00:00.000Z",
-      endTime: "2026-04-27T10:30:00.000Z",
-      totalCapacity: 10,
-      currentCapacity: 3,
-    },
-    {
-      id: "s2",
-      title: "Treino Funcional 60min",
-      type: "PRIVATE",
-      startTime: "2026-04-27T11:00:00.000Z",
-      endTime: "2026-04-27T12:00:00.000Z",
-      totalCapacity: 1,
-      currentCapacity: 1,
-    },
-    {
-      id: "s3",
-      title: "Yoga Flow 75min",
-      type: "GROUP",
-      startTime: "2026-04-28T18:00:00.000Z",
-      endTime: "2026-04-28T19:15:00.000Z",
-      totalCapacity: 12,
-      currentCapacity: 0,
-    },
-  ],
-  "rita-yoga": [
-    {
-      id: "r1",
-      title: "Sunrise Yoga 60min",
-      type: "GROUP",
-      startTime: "2026-04-27T07:30:00.000Z",
-      endTime: "2026-04-27T08:30:00.000Z",
-      totalCapacity: 8,
-      currentCapacity: 4,
-    },
-  ],
 };
 
 const dayLabel = new Intl.DateTimeFormat("pt-PT", {
@@ -93,6 +27,7 @@ const dayLabel = new Intl.DateTimeFormat("pt-PT", {
   day: "2-digit",
   month: "short",
 });
+
 
 const timeLabel = new Intl.DateTimeFormat("pt-PT", {
   hour: "2-digit",
@@ -125,18 +60,34 @@ async function fireConfetti() {
 
 export default function PublicBookingPage() {
   const params = useParams<{ slug: string }>();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const slug = params?.slug ?? "";
-  const instructor = mockInstructor[slug as keyof typeof mockInstructor];
-
-  const [slots, setSlots] = useState<PublicSlot[]>(
-    initialSlotsBySlug[slug] ?? [],
-  );
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [instructor, setInstructor] = useState<{
+    slug: string;
+    name: string;
+    avatarUrl: string | null;
+    bio: string;
+  } | null>(null);
+  const [slots, setSlots] = useState<PublicSlot[]>([]);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [lastBookedSlot, setLastBookedSlot] = useState<PublicSlot | null>(null);
   const [studentName, setStudentName] = useState("");
   const [studentPhone, setStudentPhone] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const load = async () => {
+    const data = await getPublicBookingData(slug);
+    setInstructor(data.owner);
+    setSlots(data.slots);
+  };
+
+  useEffect(() => {
+    if (slug) {
+      load();
+    }
+  }, [slug]);
 
   const availableSlots = useMemo(() => {
     const now = Date.now();
@@ -185,30 +136,29 @@ export default function PublicBookingPage() {
       return;
     }
 
-    const booking: Booking = {
-      id: crypto.randomUUID(),
-      slotId: selectedSlot.id,
-      studentName: studentName.trim(),
-      studentPhone: studentPhone.trim(),
-      status: "PENDING",
-    };
-
-    // Simula create na tabela bookings, tracking por telemovel e update do slot.
-    setBookings((prev) => [...prev, booking]);
-    setSlots((prev) =>
-      prev.map((slot) =>
-        slot.id === selectedSlot.id
-          ? { ...slot, currentCapacity: Math.max(slot.currentCapacity - 1, 0) }
-          : slot,
-      ),
-    );
-
-    setLastBookedSlot(selectedSlot);
-    setSelectedSlotId(null);
-    setSuccessMessage(
-      `Reserva feita, ${studentName.trim()}! Vemo-nos em breve.`,
-    );
-    await fireConfetti();
+    setErrorMessage(null);
+    startTransition(async () => {
+      try {
+        await createBookingAction({
+          ownerSlug: slug,
+          slotId: selectedSlot.id,
+          studentName: studentName.trim(),
+          studentPhone: studentPhone.trim(),
+        });
+        setLastBookedSlot(selectedSlot);
+        setSelectedSlotId(null);
+        setSuccessMessage(`Reserva feita, ${studentName.trim()}! Vemo-nos em breve.`);
+        await load();
+        router.refresh();
+        await fireConfetti();
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Desculpe, esta aula acabou de esgotar!",
+        );
+      }
+    });
   };
 
   const addToCalendar = () => {
@@ -249,7 +199,10 @@ export default function PublicBookingPage() {
         <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
           <div className="flex items-center gap-3 md:gap-4">
             <img
-              src={instructor.avatarUrl}
+              src={
+                instructor.avatarUrl ??
+                "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80&auto=format&fit=crop"
+              }
               alt={instructor.name}
               className="h-16 w-16 rounded-full object-cover ring-2 ring-white"
             />
@@ -397,6 +350,9 @@ export default function PublicBookingPage() {
                 />
               </div>
             </div>
+            {errorMessage ? (
+              <p className="mt-3 text-sm font-medium text-rose-600">{errorMessage}</p>
+            ) : null}
 
             <div className="mt-6 flex items-center justify-end gap-3">
               <button
@@ -409,18 +365,16 @@ export default function PublicBookingPage() {
               <button
                 type="button"
                 onClick={handleConfirmBooking}
+                disabled={isPending}
                 className="h-11 rounded-xl bg-sky-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-600"
               >
-                Confirmar Reserva
+                {isPending ? "A confirmar..." : "Confirmar Reserva"}
               </button>
             </div>
           </aside>
         </>
       ) : null}
 
-      <p className="mx-auto mt-8 max-w-2xl px-2 text-xs text-slate-500">
-        Bookings criadas nesta sessao: {bookings.length}
-      </p>
     </main>
   );
 }

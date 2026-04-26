@@ -36,21 +36,34 @@ create table if not exists templates (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists students (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references profiles(id) on delete cascade,
+  phone text not null,
+  name text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(owner_id, phone)
+);
+
 create table if not exists slots (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references profiles(id) on delete cascade,
   template_id uuid not null references templates(id) on delete cascade,
   start_time timestamptz not null,
   end_time timestamptz not null,
+  max_capacity integer not null check (max_capacity > 0),
   current_capacity integer not null default 0 check (current_capacity >= 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  check (end_time > start_time)
+  check (end_time > start_time),
+  check (current_capacity <= max_capacity)
 );
 
 create table if not exists bookings (
   id uuid primary key default gen_random_uuid(),
   slot_id uuid not null references slots(id) on delete cascade,
+  student_id uuid references students(id) on delete set null,
   student_phone text not null,
   student_name text not null,
   status booking_status not null default 'PENDING',
@@ -62,7 +75,10 @@ create index if not exists idx_templates_owner_id on templates(owner_id);
 create index if not exists idx_slots_owner_id on slots(owner_id);
 create index if not exists idx_slots_template_id on slots(template_id);
 create index if not exists idx_slots_start_time on slots(start_time);
+create index if not exists idx_students_owner_id on students(owner_id);
+create index if not exists idx_students_phone on students(phone);
 create index if not exists idx_bookings_slot_id on bookings(slot_id);
+create index if not exists idx_bookings_student_id on bookings(student_id);
 create index if not exists idx_bookings_student_phone on bookings(student_phone);
 
 create or replace function set_updated_at()
@@ -86,6 +102,11 @@ for each row execute function set_updated_at();
 drop trigger if exists trg_slots_updated_at on slots;
 create trigger trg_slots_updated_at
 before update on slots
+for each row execute function set_updated_at();
+
+drop trigger if exists trg_students_updated_at on students;
+create trigger trg_students_updated_at
+before update on students
 for each row execute function set_updated_at();
 
 drop trigger if exists trg_bookings_updated_at on bookings;

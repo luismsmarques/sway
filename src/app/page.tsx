@@ -1,19 +1,22 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState, useTransition } from "react";
+import { AlertTriangle, Trash2, UserRound, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  cancelClassAction,
+  createSlotAction,
+  deleteSlotAction,
+  getDashboardData,
+  removeBookingFromSlotAction,
+} from "./actions";
 
 type TemplateType = "PRIVATE" | "GROUP";
-
-type Template = {
-  id: string;
-  title: string;
-  type: TemplateType;
-  durationMins: number;
-  capacity: number;
-};
+type QuickFilter = "TODAY" | "TOMORROW" | "WEEK";
 
 type Slot = {
   id: string;
+  ownerId: string;
   templateId: string;
   templateTitle: string;
   templateType: TemplateType;
@@ -22,29 +25,23 @@ type Slot = {
   capacity: number;
   booked: number;
 };
+type Booking = {
+  id: string;
+  ownerId: string;
+  slotId: string;
+  studentId: string | null;
+  studentName: string;
+  studentPhone: string;
+  status: "PENDING" | "CONFIRMED" | "CANCELED";
+  createdAt: string;
+};
+type Student = { id: string; ownerId: string; phone: string; name: string };
+type Template = { id: string; title: string; durationMins: number; type: TemplateType };
 
-const mockTemplates: Template[] = [
-  {
-    id: "t1",
-    title: "Aula Surf 90min",
-    type: "GROUP",
-    durationMins: 90,
-    capacity: 6,
-  },
-  {
-    id: "t2",
-    title: "Treino Funcional 60min",
-    type: "PRIVATE",
-    durationMins: 60,
-    capacity: 1,
-  },
-  {
-    id: "t3",
-    title: "Yoga Flow 75min",
-    type: "GROUP",
-    durationMins: 75,
-    capacity: 12,
-  },
+const templates: Template[] = [
+  { id: "t1", title: "Aula Surf 90min", durationMins: 90, type: "GROUP" },
+  { id: "t2", title: "Treino Funcional 60min", durationMins: 60, type: "PRIVATE" },
+  { id: "t3", title: "Yoga Flow 75min", durationMins: 75, type: "GROUP" },
 ];
 
 const badgeStyles: Record<TemplateType, string> = {
@@ -52,525 +49,236 @@ const badgeStyles: Record<TemplateType, string> = {
   GROUP: "bg-emerald-50 text-emerald-700 ring-emerald-200",
 };
 
-const STORAGE_KEY = "solo-flow-slots";
-
-const dayLabel = new Intl.DateTimeFormat("pt-PT", {
-  weekday: "long",
-  day: "2-digit",
-  month: "long",
-});
-
-const dayChipLabel = new Intl.DateTimeFormat("pt-PT", {
-  weekday: "short",
-  day: "2-digit",
-});
-
-const timeLabel = new Intl.DateTimeFormat("pt-PT", {
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-function toLocalTimeInputValue(date: Date) {
-  const hh = String(date.getHours()).padStart(2, "0");
-  const mm = String(date.getMinutes()).padStart(2, "0");
-  return `${hh}:${mm}`;
-}
-
-function formatDayKey(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function hasOverlap(slotA: Slot, slotB: Slot) {
-  return slotA.start < slotB.end && slotB.start < slotA.end;
-}
-
-function AlertTriangleIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m10.29 3.86-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.71-3.14l-8-14a2 2 0 0 0-3.42 0Z" />
-      <line x1="12" x2="12" y1="9" y2="13" />
-      <line x1="12" x2="12.01" y1="17" y2="17" />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M3 6h18" />
-      <path d="M8 6V4h8v2" />
-      <path d="M19 6l-1 14H6L5 6" />
-      <path d="M10 11v6" />
-      <path d="M14 11v6" />
-    </svg>
-  );
-}
-
-function buildDayCarousel(totalDays = 10) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  return Array.from({ length: totalDays }).map((_, index) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() + index);
-    return date;
-  });
-}
+const dayLabel = new Intl.DateTimeFormat("pt-PT", { weekday: "long", day: "2-digit", month: "long" });
+const timeLabel = new Intl.DateTimeFormat("pt-PT", { hour: "2-digit", minute: "2-digit" });
 
 function startOfDay(date: Date) {
-  const result = new Date(date);
-  result.setHours(0, 0, 0, 0);
-  return result;
-}
-
-function endOfDay(date: Date) {
-  const result = new Date(date);
-  result.setHours(23, 59, 59, 999);
-  return result;
-}
-
-function mergeDateAndTime(date: Date, timeHHMM: string) {
-  const [hours, minutes] = timeHHMM.split(":").map(Number);
-  const output = new Date(date);
-  output.setHours(hours || 0, minutes || 0, 0, 0);
-  return output;
-}
-
-function serializeSlots(slots: Slot[]) {
-  return slots.map((slot) => ({
-    ...slot,
-    start: slot.start.toISOString(),
-    end: slot.end.toISOString(),
-  }));
-}
-
-function deserializeSlots(raw: unknown): Slot[] {
-  if (!Array.isArray(raw)) {
-    return [];
-  }
-
-  return raw
-    .map((item) => {
-      if (
-        !item ||
-        typeof item !== "object" ||
-        !("start" in item) ||
-        !("end" in item)
-      ) {
-        return null;
-      }
-
-      const slot = item as Omit<Slot, "start" | "end"> & {
-        start: string;
-        end: string;
-      };
-
-      return {
-        ...slot,
-        start: new Date(slot.start),
-        end: new Date(slot.end),
-      };
-    })
-    .filter((slot): slot is Slot => Boolean(slot));
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
 export default function InstructorDashboardPage() {
-  const [templates] = useState<Template[]>(mockTemplates);
-  const [slots, setSlots] = useState<Slot[]>(() => {
-    if (typeof window === "undefined") {
-      return [];
-    }
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (!saved) {
-      return [];
-    }
-    try {
-      return deserializeSlots(JSON.parse(saved));
-    } catch {
-      return [];
-    }
-  });
-
-  const dayOptions = useMemo(() => buildDayCarousel(10), []);
-  const [selectedDay, setSelectedDay] = useState<Date>(dayOptions[0]);
-
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [selectedDay, setSelectedDay] = useState(new Date());
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>("TODAY");
+  const [detailsSlotId, setDetailsSlotId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [drawerStep, setDrawerStep] = useState<1 | 2>(1);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
-  const [startAt, setStartAt] = useState(toLocalTimeInputValue(new Date()));
-  const [pendingDeleteSlot, setPendingDeleteSlot] = useState<Slot | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("t1");
+  const [startAt, setStartAt] = useState("09:00");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const reload = async () => {
+    const data = await getDashboardData("joao-surf");
+    setSlots(
+      data.slots.map((s) => ({
+        ...s,
+        start: new Date(s.start),
+        end: new Date(s.end),
+      })),
+    );
+    setBookings(data.bookings as Booking[]);
+    setStudents(data.students as Student[]);
+  };
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeSlots(slots)));
-  }, [slots]);
+    reload();
+  }, []);
 
-  const selectedTemplate = useMemo(
-    () => templates.find((template) => template.id === selectedTemplateId),
-    [selectedTemplateId, templates],
-  );
-
-  const dailySlots = useMemo(() => {
-    const dayStart = startOfDay(selectedDay);
-    const dayEnd = endOfDay(selectedDay);
+  const filteredSlots = useMemo(() => {
+    const now = new Date();
+    const today = startOfDay(now);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const weekEnd = new Date(today);
+    weekEnd.setDate(today.getDate() + 7);
     return slots
-      .filter((slot) => slot.start >= dayStart && slot.start <= dayEnd)
-      .sort((a, b) => a.start.getTime() - b.start.getTime());
-  }, [selectedDay, slots]);
-
-  const conflictSlotIds = useMemo(() => {
-    const ids = new Set<string>();
-
-    for (let i = 0; i < dailySlots.length; i += 1) {
-      for (let j = i + 1; j < dailySlots.length; j += 1) {
-        if (hasOverlap(dailySlots[i], dailySlots[j])) {
-          ids.add(dailySlots[i].id);
-          ids.add(dailySlots[j].id);
+      .filter((slot) => {
+        if (quickFilter === "TODAY") return slot.start >= today && slot.start < tomorrow;
+        if (quickFilter === "TOMORROW") {
+          const dayAfter = new Date(tomorrow);
+          dayAfter.setDate(tomorrow.getDate() + 1);
+          return slot.start >= tomorrow && slot.start < dayAfter;
         }
-      }
-    }
+        if (quickFilter === "WEEK") return slot.start >= today && slot.start < weekEnd;
+        return startOfDay(slot.start).getTime() === startOfDay(selectedDay).getTime();
+      })
+      .sort((a, b) => a.start.getTime() - b.start.getTime());
+  }, [quickFilter, selectedDay, slots]);
 
-    return ids;
-  }, [dailySlots]);
+  const detailsSlot = slots.find((s) => s.id === detailsSlotId) ?? null;
+  const detailsBookings = detailsSlot
+    ? bookings.filter((b) => b.slotId === detailsSlot.id && b.status !== "CANCELED")
+    : [];
 
-  const handleCreateSlot = (event: FormEvent) => {
+  const createSlot = async (event: FormEvent) => {
     event.preventDefault();
-
-    if (!selectedTemplate) {
-      return;
-    }
-
-    const start = mergeDateAndTime(selectedDay, startAt);
-    if (Number.isNaN(start.getTime())) {
-      return;
-    }
-
-    const end = new Date(start);
-    end.setMinutes(end.getMinutes() + selectedTemplate.durationMins);
-
-    const newSlot: Slot = {
-      id: crypto.randomUUID(),
-      templateId: selectedTemplate.id,
-      templateTitle: selectedTemplate.title,
-      templateType: selectedTemplate.type,
-      start,
-      end,
-      capacity: selectedTemplate.capacity,
-      booked: 0,
-    };
-
-    setSlots((prev) => [...prev, newSlot]);
-    setSelectedTemplateId("");
-    setDrawerStep(1);
-    setStartAt(toLocalTimeInputValue(new Date()));
-    setIsDrawerOpen(false);
-  };
-
-  const openDrawer = () => {
-    setDrawerStep(1);
-    setSelectedTemplateId("");
-    setStartAt(toLocalTimeInputValue(new Date()));
-    setIsDrawerOpen(true);
-  };
-
-  const handleDeleteSlot = (slot: Slot) => {
-    setPendingDeleteSlot(slot);
-  };
-
-  const confirmDeleteSlot = () => {
-    if (!pendingDeleteSlot) {
-      return;
-    }
-    setSlots((prev) => prev.filter((slot) => slot.id !== pendingDeleteSlot.id));
-    setPendingDeleteSlot(null);
+    setErrorMessage(null);
+    startTransition(async () => {
+      try {
+        const date = startOfDay(selectedDay);
+        const [h, m] = startAt.split(":").map(Number);
+        date.setHours(h || 0, m || 0, 0, 0);
+        await createSlotAction({
+          ownerSlug: "joao-surf",
+          templateId: selectedTemplateId,
+          startAtISO: date.toISOString(),
+        });
+        await reload();
+        router.refresh();
+        setIsDrawerOpen(false);
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "Falha ao criar slot.");
+      }
+    });
   };
 
   return (
     <main className="min-h-screen bg-slate-50">
       <header className="sticky top-0 z-20 border-b border-white/60 bg-white/70 backdrop-blur-md">
         <div className="mx-auto max-w-2xl px-4 py-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Daily Feed
-          </p>
-          <h1 className="mt-1 text-lg font-semibold text-slate-900">
-            {dayLabel.format(selectedDay)}
-          </h1>
-          <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
-            {dayOptions.map((day) => {
-              const isActive = formatDayKey(day) === formatDayKey(selectedDay);
-              return (
-                <button
-                  key={day.toISOString()}
-                  type="button"
-                  onClick={() => setSelectedDay(day)}
-                  className={`shrink-0 rounded-full px-3 py-2 text-xs font-semibold transition ${
-                    isActive
-                      ? "bg-sky-100 text-sky-800 ring-1 ring-sky-200"
-                      : "bg-white text-slate-600 ring-1 ring-slate-200"
-                  }`}
-                >
-                  {dayChipLabel.format(day)}
-                </button>
-              );
-            })}
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Daily Feed</p>
+          <h1 className="mt-1 text-lg font-semibold text-slate-900">{dayLabel.format(selectedDay)}</h1>
+          <div className="mt-3 flex gap-2">
+            {(["TODAY", "TOMORROW", "WEEK"] as const).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setQuickFilter(f)}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                  quickFilter === f ? "bg-sky-100 text-sky-800 ring-1 ring-sky-200" : "bg-white text-slate-600 ring-1 ring-slate-200"
+                }`}
+              >
+                {f === "TODAY" ? "Hoje" : f === "TOMORROW" ? "Amanha" : "Esta Semana"}
+              </button>
+            ))}
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-2xl space-y-4 px-4 pb-24 pt-4">
-        <header className="space-y-1">
-          <p className="text-sm font-medium text-slate-500">Solo-Flow</p>
-          <p className="text-sm text-slate-600">
-            Pinta a agenda em segundos: escolhe template e hora de inicio.
-          </p>
-        </header>
-
-        {dailySlots.length === 0 ? (
-          <section className="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-200/70">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Sem slots para mostrar
-            </h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Perfeito para comecar. Toca no + e adiciona o primeiro horario do dia.
-            </p>
-          </section>
-        ) : (
-          <section className="space-y-3">
-            {dailySlots.map((slot) => (
-              <article
-                key={slot.id}
-                className={`rounded-2xl border bg-white p-4 shadow-sm ${
-                  conflictSlotIds.has(slot.id)
-                    ? "border-rose-200"
-                    : "border-transparent ring-1 ring-slate-200/70"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-base font-semibold tracking-tight text-slate-900">
-                      {timeLabel.format(slot.start)} - {timeLabel.format(slot.end)}
-                    </p>
-                    <p className="mt-1 truncate text-sm font-medium text-slate-800">
-                      {slot.templateTitle}
-                    </p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${badgeStyles[slot.templateType]}`}
-                      >
-                        {slot.templateType === "GROUP" ? "Grupo" : "Privada"}
-                      </span>
-                      {conflictSlotIds.has(slot.id) ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-200">
-                          <AlertTriangleIcon />
-                          Sobreposicao
-                        </span>
-                      ) : null}
-                    </div>
-                    {slot.templateType === "GROUP" ? (
-                      <p className="mt-2 text-sm font-medium text-slate-700">
-                        {slot.booked} / {slot.capacity} vagas
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteSlot(slot)}
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-                    aria-label="Eliminar slot"
-                  >
-                    <TrashIcon />
-                  </button>
-                </div>
-              </article>
-            ))}
-          </section>
-        )}
+      <div className="mx-auto max-w-2xl space-y-3 px-4 pb-24 pt-4">
+        {filteredSlots.map((slot) => (
+          <article key={slot.id} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/70" onClick={() => setDetailsSlotId(slot.id)}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-base font-semibold text-slate-900">
+                  {timeLabel.format(slot.start)} - {timeLabel.format(slot.end)}
+                </p>
+                <p className="mt-1 text-sm text-slate-700">{slot.templateTitle}</p>
+                <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${badgeStyles[slot.templateType]}`}>
+                  {slot.templateType === "GROUP" ? "Grupo" : "Privada"}
+                </span>
+                {slot.templateType === "GROUP" ? (
+                  <p className="mt-2 text-sm text-slate-600">🟢 {slot.booked} vagas ocupadas de {slot.capacity}</p>
+                ) : null}
+              </div>
+            </div>
+          </article>
+        ))}
       </div>
 
-      <button
-        type="button"
-        onClick={openDrawer}
-        className="fixed bottom-8 right-8 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-sky-500 text-3xl leading-none text-white shadow-lg transition hover:bg-sky-600"
-        aria-label="Criar slot"
-      >
+      <button type="button" onClick={() => setIsDrawerOpen(true)} className="fixed bottom-8 right-8 z-30 h-14 w-14 rounded-full bg-sky-500 text-3xl text-white shadow-lg">
         +
       </button>
 
       {isDrawerOpen ? (
-        <>
-          <button
-            type="button"
-            onClick={() => setIsDrawerOpen(false)}
-            className="fixed inset-0 z-40 bg-slate-900/35"
-            aria-label="Fechar drawer"
-          />
+        <aside className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl bg-white p-5 shadow-2xl">
+          <form onSubmit={createSlot} className="space-y-4">
+            <h2 className="text-lg font-semibold text-slate-900">Criar slot</h2>
+            <select
+              value={selectedTemplateId}
+              onChange={(e) => setSelectedTemplateId(e.target.value)}
+              className="h-11 w-full rounded-xl border border-slate-200 px-4"
+            >
+              {templates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.title}
+                </option>
+              ))}
+            </select>
+            <input type="time" value={startAt} onChange={(e) => setStartAt(e.target.value)} className="h-11 w-full rounded-xl border border-slate-200 px-4" />
+            {errorMessage ? <p className="text-sm text-rose-600">{errorMessage}</p> : null}
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setIsDrawerOpen(false)} className="h-10 rounded-xl border border-slate-200 px-4">Cancelar</button>
+              <button disabled={isPending} className="h-10 rounded-xl bg-sky-500 px-4 text-white">{isPending ? "A guardar..." : "Guardar"}</button>
+            </div>
+          </form>
+        </aside>
+      ) : null}
 
-          <aside className="fixed bottom-0 left-0 right-0 z-50 max-h-[88vh] overflow-y-auto rounded-t-3xl bg-white p-5 pb-7 shadow-2xl ring-1 ring-slate-200 md:left-auto md:right-6 md:top-6 md:w-[28rem] md:rounded-3xl md:p-6">
-            {drawerStep === 1 ? (
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Escolhe um template
-                </h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  Passo 1 de 2. Seleciona o molde da aula.
-                </p>
-
-                <div className="mt-5 space-y-2">
-                  {templates.map((template) => (
-                    <button
-                      key={template.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedTemplateId(template.id);
-                        setDrawerStep(2);
-                      }}
-                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-sky-200 hover:bg-sky-50/40"
-                    >
-                      <p className="text-sm font-semibold text-slate-900">
-                        {template.title}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-600">
-                        {template.durationMins} min
-                      </p>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="mt-5 flex justify-end">
+      {detailsSlot ? (
+        <aside className="fixed bottom-0 left-0 right-0 z-[60] max-h-[88vh] overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl">
+          <div className="flex items-start justify-between">
+            <h3 className="text-lg font-semibold text-slate-900">Detalhes da Aula</h3>
+            <button onClick={() => setDetailsSlotId(null)} className="rounded-full p-1 text-slate-500"><X size={16} /></button>
+          </div>
+          <p className="mt-1 text-sm text-slate-600">{detailsSlot.templateTitle}</p>
+          <div className="mt-4 space-y-2">
+            {detailsBookings.map((booking) => (
+              <div key={booking.id} className="rounded-xl border border-slate-200 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="flex items-center gap-1 text-sm font-semibold text-slate-900"><UserRound size={14} />{booking.studentName}</p>
+                    <p className="text-xs text-slate-600">{booking.studentPhone}</p>
+                    <span className="mt-1 inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-xs text-sky-700">
+                      {bookings.filter((b) => b.studentPhone === booking.studentPhone && b.status !== "CANCELED").length}a aula
+                    </span>
+                  </div>
                   <button
-                    type="button"
-                    onClick={() => setIsDrawerOpen(false)}
-                    className="h-11 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    onClick={async () => {
+                      await removeBookingFromSlotAction({ bookingId: booking.id });
+                      await reload();
+                      router.refresh();
+                    }}
+                    className="rounded-full p-1 text-slate-500 hover:bg-slate-100"
                   >
-                    Fechar
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>
-            ) : (
-              <form className="space-y-5" onSubmit={handleCreateSlot}>
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Define a hora de inicio
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Passo 2 de 2. A hora de fim e calculada automaticamente.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <label
-                    htmlFor="start_at"
-                    className="text-sm font-medium text-slate-700"
-                  >
-                    Hora de inicio
-                  </label>
-                  <input
-                    id="start_at"
-                    type="time"
-                    value={startAt}
-                    onChange={(event) => setStartAt(event.target.value)}
-                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-                    required
-                  />
-                </div>
-
-                <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                  {selectedTemplate ? (
-                    <>
-                      Fim estimado:{" "}
-                      <span className="font-semibold text-slate-900">
-                        {timeLabel.format(
-                          new Date(
-                            mergeDateAndTime(selectedDay, startAt).getTime() +
-                              selectedTemplate.durationMins * 60 * 1000,
-                          ),
-                        )}
-                      </span>
-                    </>
-                  ) : (
-                    "Seleciona um template para calcular a hora de fim."
-                  )}
-                </div>
-
-                <div className="flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setDrawerStep(1)}
-                    className="h-11 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                  >
-                    Voltar
-                  </button>
-                  <button
-                    type="submit"
-                    className="h-11 rounded-xl bg-sky-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-600"
-                  >
-                    Guardar slot
-                  </button>
-                </div>
-              </form>
-            )}
-          </aside>
-        </>
+            ))}
+          </div>
+          {detailsBookings.length > 0 ? (
+            <p className="mt-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">
+              Esta aula tem {detailsBookings.length} alunos. Ao cancelar, todos serao notificados.
+            </p>
+          ) : null}
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              onClick={async () => {
+                await deleteSlotAction({ slotId: detailsSlot.id });
+                await reload();
+                setDetailsSlotId(null);
+                router.refresh();
+              }}
+              className="h-10 rounded-xl border border-slate-200 px-4 text-sm"
+            >
+              Eliminar Slot
+            </button>
+            <button
+              onClick={async () => {
+                await cancelClassAction({ slotId: detailsSlot.id });
+                await reload();
+                setDetailsSlotId(null);
+                router.refresh();
+              }}
+              className="h-10 rounded-xl bg-rose-500 px-4 text-sm text-white"
+            >
+              Cancelar Aula
+            </button>
+          </div>
+        </aside>
       ) : null}
 
-      {pendingDeleteSlot ? (
-        <>
-          <button
-            type="button"
-            onClick={() => setPendingDeleteSlot(null)}
-            className="fixed inset-0 z-[60] bg-slate-900/40"
-            aria-label="Fechar confirmacao"
-          />
-          <section className="fixed inset-x-4 top-1/2 z-[61] -translate-y-1/2 rounded-2xl bg-white p-5 shadow-xl ring-1 ring-slate-200 md:inset-x-auto md:right-6 md:top-auto md:bottom-6 md:translate-y-0 md:w-80">
-            <h3 className="text-base font-semibold text-slate-900">
-              Eliminar slot?
-            </h3>
-            <p className="mt-1 text-sm text-slate-600">
-              Esta acao remove o horario da agenda do dia.
-            </p>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setPendingDeleteSlot(null)}
-                className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={confirmDeleteSlot}
-                className="h-10 rounded-xl bg-rose-500 px-4 text-sm font-medium text-white"
-              >
-                Eliminar
-              </button>
-            </div>
-          </section>
-        </>
+      {filteredSlots.length === 0 ? (
+        <section className="mx-auto max-w-2xl rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-200/70">
+          <h2 className="text-lg font-semibold text-slate-900">Sem slots para mostrar</h2>
+          <p className="mt-2 text-sm text-slate-600">Perfeito para comecar. Toca no + e adiciona o primeiro horario.</p>
+        </section>
       ) : null}
     </main>
   );

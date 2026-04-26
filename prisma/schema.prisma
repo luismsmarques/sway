@@ -27,6 +27,7 @@ model Profile {
   createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
   templates Template[]
+  students  Student[]
   slots     Slot[]
 
   @@map("profiles")
@@ -55,6 +56,7 @@ model Slot {
   templateId      String    @map("template_id") @db.Uuid
   startTime       DateTime  @map("start_time") @db.Timestamptz(6)
   endTime         DateTime  @map("end_time") @db.Timestamptz(6)
+  maxCapacity     Int       @map("max_capacity")
   currentCapacity Int       @default(0) @map("current_capacity")
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -68,17 +70,36 @@ model Slot {
   @@map("slots")
 }
 
+model Student {
+  id        String    @id @default(uuid()) @db.Uuid
+  ownerId   String    @map("owner_id") @db.Uuid
+  phone     String
+  name      String
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  owner     Profile   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  bookings  Booking[]
+
+  @@unique([ownerId, phone])
+  @@index([ownerId])
+  @@index([phone])
+  @@map("students")
+}
+
 model Booking {
   id           String        @id @default(uuid()) @db.Uuid
   slotId       String        @map("slot_id") @db.Uuid
+  studentId    String?       @map("student_id") @db.Uuid
   studentPhone String        @map("student_phone")
   studentName  String        @map("student_name")
   status       BookingStatus @default(PENDING)
   createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
   slot         Slot          @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  student      Student?      @relation(fields: [studentId], references: [id], onDelete: SetNull)
 
   @@index([slotId])
+  @@index([studentId])
   @@index([studentPhone])
   @@map("bookings")
 }
