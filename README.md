@@ -284,6 +284,20 @@ Mensagem esperada:
 
 Isto protege contra overbooking em concorrencia.
 
+## Release Notes
+
+### 2026-04-26 - UI Shell + Dashboard/Booking Redesign
+
+- Nova shell global com layout centralizado (`max-w-4xl`) e base visual premium (`bg-[#F9FAFB]`).
+- Dashboard reestruturado com header, barra de acoes agrupada e feed de agenda em lista integrada (`ul/li + divide-y`).
+- Pagina publica `/book/[slug]` refeita em estilo bio-link premium com hero central, lista de horarios e CTA full-width.
+- Arquitetura modular em `src/components/ui/dashboard` com componentes reutilizaveis para dashboard e booking.
+- Introducao de tokens de UI e estados semanticos:
+  - `ui-tokens.ts` para shell/cards/botoes/titulos
+  - `status-tokens.ts` para badges de tipo, capacidade, info e warning
+- Deploy de producao publicado na Vercel:
+  - `https://sway-qki86huh1-luis-projects-1d97c46f.vercel.app`
+
 ## Roadmap
 
 - CRUD real de templates (sem mocks)
