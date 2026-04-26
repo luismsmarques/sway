@@ -321,6 +321,8 @@ Isto protege contra overbooking em concorrencia.
 - Removida toda a instrumentacao temporaria de debug adicionada durante a investigacao de loading e auth em settings.
 - Limpeza dos hooks de logging no client (`/dashboard/settings`) e server actions (`getSettingsDataAction`).
 - Validacao final de estabilidade com `npm run build` concluido com sucesso apos a limpeza.
+- Deploy de producao apos cleanup:
+  - `https://sway-cmeoa5z1y-luis-projects-1d97c46f.vercel.app`
 
 ### 2026-04-26 - UI Shell + Dashboard/Booking Redesign
 
