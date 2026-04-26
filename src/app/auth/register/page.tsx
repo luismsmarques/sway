@@ -13,14 +13,16 @@ export default function RegisterPage() {
   const [slug, setSlug] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
     setErrorMessage(null);
+    setSuccessMessage(null);
     const supabase = createSupabaseBrowserClient();
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -34,6 +36,15 @@ export default function RegisterPage() {
 
     if (error) {
       setErrorMessage(error.message);
+      return;
+    }
+
+    if (!data.session) {
+      setSuccessMessage(
+        "Conta criada. Verifica o teu email para confirmar o registo e depois faz login.",
+      );
+      router.replace("/login");
+      router.refresh();
       return;
     }
 
@@ -91,6 +102,9 @@ export default function RegisterPage() {
           />
           {errorMessage ? (
             <p className="text-sm font-medium text-rose-600">{errorMessage}</p>
+          ) : null}
+          {successMessage ? (
+            <p className="text-sm font-medium text-emerald-700">{successMessage}</p>
           ) : null}
           <button
             disabled={loading}
