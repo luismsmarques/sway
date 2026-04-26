@@ -11,7 +11,7 @@ Motor de reservas mobile-first para profissionais independentes (Surf, Yoga, PT)
 Funcionalidades principais implementadas:
 
 - Landing page de marketing em `/`.
-- Autenticacao com Supabase Auth (login/registo).
+- Autenticacao com Supabase Auth (login/registo com slug).
 - Dashboard protegido em `/dashboard` com isolamento por instrutor.
 - Criacao de slots via drawer e botao flutuante.
 - Deteccao visual de conflitos de horario.
@@ -39,6 +39,8 @@ src/
   app/
     page.tsx                 # Landing page (marketing)
     dashboard/page.tsx       # Dashboard do instrutor (protegido)
+    login/page.tsx           # Login (publico)
+    register/page.tsx        # Registo (publico)
     auth/login/page.tsx      # Login
     auth/register/page.tsx   # Registo
     book/[slug]/page.tsx     # Pagina publica de reservas
@@ -74,11 +76,12 @@ Regras chave:
 ### 1) Instrutor
 
 1. Criar conta / iniciar sessao
-2. Criar/selecionar template
-3. Criar slot no dashboard
-4. Ver inscritos no detalhe da aula
-5. Remover aluno (liberta vaga)
-6. Cancelar aula (marca bookings `CANCELED` e remove slot)
+2. Escolher slug no registo (ex: `joao-surf`)
+3. Criar/selecionar template
+4. Criar slot no dashboard
+5. Ver inscritos no detalhe da aula
+6. Remover aluno (liberta vaga)
+7. Cancelar aula (marca bookings `CANCELED` e remove slot)
 
 ### 2) Aluno
 
@@ -93,20 +96,21 @@ Regras chave:
 1. Visita a landing em `/`
 2. Entende proposta de valor e beneficios
 3. Clica em "Comecar Agora Gratuitamente"
-4. Converte via `/auth/register`
+4. Converte via `/register`
 
 ## Auth e RLS
 
 Implementado:
 
 - Supabase Auth com paginas dedicadas:
-  - `/auth/login`
-  - `/auth/register`
+  - `/login`
+  - `/register`
 - Middleware de protecao:
-  - `/dashboard` exige sessao ativa
-  - utilizador autenticado em `/auth/*` e redirecionado para `/dashboard`
+  - `/dashboard/:path*` exige sessao ativa
+  - utilizador autenticado em `/login` ou `/register` e redirecionado para `/dashboard`
 - Perfil automatico no primeiro login/registo:
   - cria `profiles` com `user_id`, `name`, `slug` unico
+  - usa o slug escolhido no registo; se ja existir, resolve colisao com sufixo
 - RLS aplicado em:
   - `profiles`, `templates`, `slots`, `students`, `bookings`
 

@@ -10,6 +10,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [slug, setSlug] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -25,6 +26,7 @@ export default function RegisterPage() {
       options: {
         data: {
           full_name: fullName,
+          slug,
         },
       },
     });
@@ -57,6 +59,21 @@ export default function RegisterPage() {
             required
           />
           <input
+            type="text"
+            placeholder="Slug publico (ex: joao-surf)"
+            value={slug}
+            onChange={(event) =>
+              setSlug(
+                event.target.value
+                  .toLowerCase()
+                  .replace(/[^a-z0-9-]/g, "")
+                  .replace(/--+/g, "-"),
+              )
+            }
+            className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm"
+            required
+          />
+          <input
             type="email"
             placeholder="Email"
             value={email}
@@ -85,7 +102,7 @@ export default function RegisterPage() {
 
         <p className="mt-4 text-sm text-slate-600">
           Ja tens conta?{" "}
-          <Link href="/auth/login" className="font-medium text-sky-700">
+          <Link href="/login" className="font-medium text-sky-700">
             Entrar
           </Link>
         </p>

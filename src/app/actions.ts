@@ -27,7 +27,10 @@ async function requireOwnerProfile() {
       ? user.user_metadata.full_name
       : emailPrefix;
 
-  let slugBase = emailPrefix
+  const desiredSlug =
+    typeof user.user_metadata?.slug === "string" ? user.user_metadata.slug : "";
+
+  let slugBase = (desiredSlug || emailPrefix)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
