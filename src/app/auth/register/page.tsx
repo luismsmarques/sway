@@ -66,6 +66,7 @@ export default function RegisterPage() {
             placeholder="Nome completo"
             value={fullName}
             onChange={(event) => setFullName(event.target.value)}
+            autoComplete="name"
             className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm"
             required
           />
@@ -89,6 +90,7 @@ export default function RegisterPage() {
             placeholder="Email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
+            autoComplete="email"
             className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm"
             required
           />
@@ -97,6 +99,7 @@ export default function RegisterPage() {
             placeholder="Password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
+            autoComplete="new-password"
             className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm"
             required
           />

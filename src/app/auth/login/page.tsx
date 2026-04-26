@@ -44,6 +44,7 @@ export default function LoginPage() {
             placeholder="Email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
+            autoComplete="email"
             className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm"
             required
           />
@@ -52,6 +53,7 @@ export default function LoginPage() {
             placeholder="Password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
+            autoComplete="current-password"
             className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm"
             required
           />
