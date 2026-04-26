@@ -26,6 +26,8 @@ import {
 } from "@/components/ui/dashboard/status-tokens";
 import { StudentProfileHero } from "@/components/ui/dashboard/student-profile-hero";
 import { uiButton, uiShell } from "@/components/ui/dashboard/ui-tokens";
+import { MobileAppHeader } from "@/components/ui/mobile-app-header";
+import { MobileSkeletonCard } from "@/components/ui/mobile-skeleton";
 
 const typeBadgeStyles: Record<TemplateType, string> = TEMPLATE_BADGE_STYLES;
 
@@ -187,6 +189,7 @@ export default function PublicBookingPage() {
   if (!instructor) {
     return (
       <main className="min-h-screen bg-[#F9FAFB] py-6 font-sans sm:py-8">
+        <MobileAppHeader title="Reservar aula" />
         <Card className={`mx-auto w-full max-w-4xl text-center ${uiShell.card}`}>
           <CardHeader>
             <CardTitle className={uiShell.sectionTitle}>Perfil nao encontrado</CardTitle>
@@ -201,7 +204,9 @@ export default function PublicBookingPage() {
 
   return (
     <main className="min-h-screen bg-[#F9FAFB] py-6 font-sans sm:py-8">
+      <MobileAppHeader title={instructor.name} />
       <div className={`${uiShell.page} space-y-4`}>
+        {slots.length === 0 ? <MobileSkeletonCard /> : null}
         <StudentProfileHero instructor={instructor} />
 
         {successMessage ? (

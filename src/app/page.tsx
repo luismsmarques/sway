@@ -44,7 +44,15 @@ const testimonials = [
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-[#F9FAFB]">
-      <section className={`${uiShell.page} py-12 sm:py-16`}>
+      <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/80 backdrop-blur-md">
+        <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-5 sm:px-6">
+          <p className="text-sm font-semibold tracking-tight text-slate-900">Solo-Flow</p>
+          <Link href="/login" className="text-sm font-medium text-slate-600">
+            Entrar
+          </Link>
+        </div>
+      </header>
+      <section className={`${uiShell.page} py-8 sm:py-12`}>
         <p className={`mb-3 ${uiShell.eyebrow}`}>Solo-Flow</p>
         <div className={`grid items-center gap-6 p-6 lg:grid-cols-2 ${uiShell.card}`}>
           <div>

@@ -15,6 +15,8 @@ import {
   WARNING_TEXT_STYLE,
 } from "@/components/ui/dashboard/status-tokens";
 import { uiButton, uiShell } from "@/components/ui/dashboard/ui-tokens";
+import { MobileAppHeader } from "@/components/ui/mobile-app-header";
+import { MobileSkeletonCard } from "@/components/ui/mobile-skeleton";
 
 type ReconfirmData = {
   id: string;
@@ -101,12 +103,9 @@ export default function ReconfirmBookingPage() {
   if (isLoading) {
     return (
       <main className="min-h-screen bg-[#F9FAFB] py-8">
+        <MobileAppHeader title="Reconfirmar" showBackButton />
         <section className={`${uiShell.page}`}>
-          <Card className={`${uiShell.card} text-center`}>
-            <CardHeader>
-              <CardTitle className={uiShell.sectionTitle}>A carregar pedido...</CardTitle>
-            </CardHeader>
-          </Card>
+          <MobileSkeletonCard />
         </section>
       </main>
     );
@@ -115,6 +114,7 @@ export default function ReconfirmBookingPage() {
   if (!booking) {
     return (
       <main className="min-h-screen bg-[#F9FAFB] py-8">
+        <MobileAppHeader title="Reconfirmar" showBackButton />
         <section className={`${uiShell.page}`}>
           <Card className={`${uiShell.card} text-center`}>
             <CardHeader>
@@ -130,7 +130,8 @@ export default function ReconfirmBookingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F9FAFB] py-8">
+    <main className="min-h-screen bg-[#F9FAFB] pb-28 pt-8">
+      <MobileAppHeader title="Reconfirmar" showBackButton />
       <section className={`${uiShell.page} space-y-4`}>
         <Card className={uiShell.card}>
           <CardHeader className="space-y-3">
@@ -160,33 +161,36 @@ export default function ReconfirmBookingPage() {
                   Esta reserva ja esta cancelada.
                 </p>
               </div>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Button
-                  type="button"
-                  onClick={() => decide("CONFIRM")}
-                  disabled={isPending}
-                  className={uiButton.primary}
-                >
-                  Sim, confirmo
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => decide("CANCEL")}
-                  disabled={isPending}
-                  variant="outline"
-                  className="border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
-                >
-                  Nao posso, quero cancelar
-                </Button>
-              </div>
-            )}
+            ) : null}
 
             {doneMessage ? <p className="text-sm font-medium text-emerald-700">{doneMessage}</p> : null}
             {errorMessage ? <p className="text-sm font-medium text-rose-700">{errorMessage}</p> : null}
           </CardContent>
         </Card>
       </section>
+      {booking.status !== "CANCELED" ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-100 bg-white/95 px-5 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 backdrop-blur-md">
+          <div className="mx-auto grid max-w-4xl gap-2">
+            <Button
+              type="button"
+              onClick={() => decide("CONFIRM")}
+              disabled={isPending}
+              className={uiButton.primary}
+            >
+              Sim, confirmo
+            </Button>
+            <Button
+              type="button"
+              onClick={() => decide("CANCEL")}
+              disabled={isPending}
+              variant="outline"
+              className="border-slate-100 bg-white text-slate-700 hover:bg-slate-100 active:scale-95 transition-transform"
+            >
+              Nao posso, quero cancelar
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

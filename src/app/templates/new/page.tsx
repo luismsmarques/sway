@@ -8,6 +8,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MobileAppHeader } from "@/components/ui/mobile-app-header";
+import { MobileBottomNav } from "@/components/ui/mobile-bottom-nav";
 
 type TemplateType = "PRIVATE" | "GROUP";
 
@@ -18,8 +20,9 @@ const typeStyles: Record<TemplateType, string> = {
 
 export default function NewTemplatePage() {
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-6 md:p-10">
-      <div className="mx-auto max-w-2xl space-y-5">
+    <main className="min-h-screen bg-slate-50 pb-24">
+      <MobileAppHeader title="Novo Template" showBackButton />
+      <div className="mx-auto max-w-2xl space-y-5 px-5 py-4">
         <header className="space-y-1">
           <p className="text-sm font-medium text-slate-500">Solo-Flow</p>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
@@ -30,7 +33,7 @@ export default function NewTemplatePage() {
           </p>
         </header>
 
-        <Card className="bg-white shadow-sm">
+        <Card className="border border-slate-100 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <CardHeader>
             <CardTitle className="text-2xl font-semibold tracking-tight">
               Dados do Template
@@ -52,7 +55,7 @@ export default function NewTemplatePage() {
                 id="title"
                 name="title"
                 placeholder="Ex.: Aula Surf 90min"
-                className="h-10"
+                className="h-11 text-[17px]"
               />
             </div>
 
@@ -95,7 +98,7 @@ export default function NewTemplatePage() {
                   min={15}
                   step={15}
                   defaultValue={60}
-                  className="h-10"
+                  className="h-11 text-[17px]"
                 />
               </div>
 
@@ -112,7 +115,7 @@ export default function NewTemplatePage() {
                   type="number"
                   min={1}
                   defaultValue={1}
-                  className="h-10"
+                  className="h-11 text-[17px]"
                 />
               </div>
 
@@ -130,7 +133,7 @@ export default function NewTemplatePage() {
                   min={0}
                   step="0.01"
                   defaultValue={0}
-                  className="h-10"
+                  className="h-11 text-[17px]"
                 />
               </div>
             </div>
@@ -144,7 +147,7 @@ export default function NewTemplatePage() {
               </Button>
               <Button
                 type="submit"
-                className="bg-sky-600 text-white hover:bg-sky-700"
+                className="bg-sky-600 text-white hover:bg-sky-700 active:scale-95 transition-transform"
               >
                 Guardar Template
               </Button>
@@ -153,6 +156,7 @@ export default function NewTemplatePage() {
           </CardContent>
         </Card>
       </div>
+      <MobileBottomNav />
     </main>
   );
 }

@@ -15,6 +15,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { TEMPLATE_BADGE_STYLES } from "@/components/ui/dashboard/status-tokens";
 import { uiButton, uiShell } from "@/components/ui/dashboard/ui-tokens";
+import { MobileAppHeader } from "@/components/ui/mobile-app-header";
+import { MobileBottomNav } from "@/components/ui/mobile-bottom-nav";
+import { MobileSkeletonCard } from "@/components/ui/mobile-skeleton";
 
 type SettingsTemplate = {
   id: string;
@@ -226,21 +229,20 @@ export default function DashboardSettingsPage() {
 
   if (isLoading) {
     return (
-      <main className="min-h-screen bg-[#F9FAFB] py-8">
+      <main className="min-h-screen bg-[#F9FAFB] pb-24">
+        <MobileAppHeader title="Settings" />
         <section className={`${uiShell.page}`}>
-          <Card className={uiShell.card}>
-            <CardHeader>
-              <CardTitle className={uiShell.sectionTitle}>A carregar settings...</CardTitle>
-            </CardHeader>
-          </Card>
+          <MobileSkeletonCard />
         </section>
+        <MobileBottomNav />
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#F9FAFB] py-8">
-      <section className={`${uiShell.page} space-y-4`}>
+    <main className="min-h-screen bg-[#F9FAFB] pb-24">
+      <MobileAppHeader title="Settings" />
+      <section className={`${uiShell.page} space-y-4 py-4`}>
         <Card className={uiShell.card}>
           <CardHeader>
             <p className={uiShell.eyebrow}>Dashboard Settings</p>
@@ -496,6 +498,7 @@ export default function DashboardSettingsPage() {
         {feedback ? <p className="text-sm font-medium text-emerald-700">{feedback}</p> : null}
         {errorMessage ? <p className="text-sm font-medium text-rose-700">{errorMessage}</p> : null}
       </section>
+      <MobileBottomNav />
     </main>
   );
 }

@@ -23,6 +23,7 @@ Funcionalidades principais implementadas:
 - Tracking de alunos por telemovel (unico por instrutor).
 - Persistencia real com Prisma + transacoes.
 - Refatoracao visual premium com Layout Shell unificado + design tokens semanticos.
+- Refactor mobile-native com App Shell sticky, bottom sheets e bottom nav.
 - Deploy em Vercel.
 
 ## Stack tecnica
@@ -87,6 +88,11 @@ Base visual atual:
 - Dashboard com feed estruturado em lista integrada (`ul/li + divide-y`).
 - Modal de criacao com repeticao semanal e preview de slots antes de guardar.
 - Checkout do aluno com `Drawer` (mobile-first, slide-up).
+- Header sticky nativo (`bg-white/80 + backdrop-blur-md`) e safe paddings `px-5`.
+- Bottom navigation fixa em mobile no ecossistema dashboard.
+- Tipografia mobile ajustada para `text-[17px]`.
+- Feedback tactil nos elementos clicaveis com `active:scale-95 transition-transform`.
+- Skeletons de loading para reduzir sensacao de "flash" entre estados.
 - Raio global modernizado em `--radius: 1rem` no `globals.css`.
 - Tokens visuais centralizados:
   - `ui-tokens.ts`: shell, cards, titulos e botoes
@@ -331,6 +337,14 @@ Isto protege contra overbooking em concorrencia.
 - Criacao recorrente de slots no dashboard com preview:
   - selecao de dias da semana + numero de semanas
   - contagem de slots novos e intervalo de datas antes de guardar.
+
+### 2026-04-26 - Mobile Native UX Pass
+
+- App Shell mobile em toda a app com header sticky e safe paddings.
+- Substituicao de modais centrais por bottom sheets nos fluxos principais de dashboard.
+- Bottom nav fixa no contexto de gestao (`Agenda`, `Settings`, `Templates`).
+- CTA e componentes clicaveis com estados active para feedback de toque.
+- Skeletons para estados de loading principais.
 
 ## Roadmap
 

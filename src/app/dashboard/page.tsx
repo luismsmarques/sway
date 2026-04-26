@@ -23,13 +23,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DashboardHeader } from "@/components/ui/dashboard/dashboard-header";
 import { DashboardActionBar } from "@/components/ui/dashboard/dashboard-action-bar";
@@ -41,6 +41,9 @@ import {
   WARNING_TEXT_STYLE,
 } from "@/components/ui/dashboard/status-tokens";
 import { uiShell } from "@/components/ui/dashboard/ui-tokens";
+import { MobileAppHeader } from "@/components/ui/mobile-app-header";
+import { MobileBottomNav } from "@/components/ui/mobile-bottom-nav";
+import { MobileSkeletonCard } from "@/components/ui/mobile-skeleton";
 import {
   Booking,
   QuickFilter,
@@ -99,8 +102,10 @@ export default function InstructorDashboardPage() {
   const [repeatDays, setRepeatDays] = useState<number[]>([new Date().getDay()]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const reload = async () => {
+    setIsLoading(true);
     const data = await getDashboardData();
     setSlots(
       data.slots.map((s) => ({
@@ -115,6 +120,7 @@ export default function InstructorDashboardPage() {
     }
     setBookings(data.bookings as Booking[]);
     setStudents(data.students as Student[]);
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -249,8 +255,10 @@ export default function InstructorDashboardPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#F9FAFB] pb-10">
-      <div className={`${uiShell.page} py-6 sm:py-8`}>
+    <main className="min-h-screen bg-[#F9FAFB] pb-24">
+      <MobileAppHeader title="Agenda" />
+      <div className={`${uiShell.page} py-4 sm:py-6`}>
+        {isLoading ? <MobileSkeletonCard /> : null}
         <section className={uiShell.card}>
           <DashboardHeader formattedDate={dayLabel.format(selectedDay)} />
           <DashboardActionBar
@@ -269,17 +277,17 @@ export default function InstructorDashboardPage() {
         </section>
       </div>
 
-      <Dialog open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-semibold tracking-tight">
+      <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle className="text-2xl font-semibold tracking-tight">
               Criar slot
-            </DialogTitle>
-            <DialogDescription>
+            </DrawerTitle>
+            <DrawerDescription>
               Seleciona o template e define a hora de inicio.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={createSlot} className="space-y-4">
+            </DrawerDescription>
+          </DrawerHeader>
+          <form onSubmit={createSlot} className="space-y-4 px-4 pb-2">
             <select
               value={selectedTemplateId}
               onChange={(e) => setSelectedTemplateId(e.target.value)}
@@ -367,17 +375,17 @@ export default function InstructorDashboardPage() {
             {errorMessage ? (
               <p className="text-sm text-rose-600">{errorMessage}</p>
             ) : null}
-            <DialogFooter className="bg-transparent p-0 pt-2">
+            <DrawerFooter className="bg-transparent p-0 pt-2">
               <Button type="button" variant="outline" onClick={() => setIsDrawerOpen(false)}>
                 Cancelar
               </Button>
               <Button disabled={isPending}>
                 {isPending ? "A guardar..." : "Guardar"}
               </Button>
-            </DialogFooter>
+            </DrawerFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
 
       {successMessage ? (
         <section className={`${uiShell.page} pb-2`}>
@@ -385,19 +393,19 @@ export default function InstructorDashboardPage() {
         </section>
       ) : null}
 
-      <Dialog open={Boolean(detailsSlot)} onOpenChange={(open) => !open && setDetailsSlotId(null)}>
-        <DialogContent className="max-w-xl">
+      <Drawer open={Boolean(detailsSlot)} onOpenChange={(open) => !open && setDetailsSlotId(null)}>
+        <DrawerContent>
           {detailsSlot ? (
             <>
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-semibold tracking-tight">
+              <DrawerHeader>
+                <DrawerTitle className="text-2xl font-semibold tracking-tight">
                   Detalhes da Aula
-                </DialogTitle>
-                <DialogDescription>
+                </DrawerTitle>
+                <DrawerDescription>
                   {detailsSlot.templateTitle} · {timeLabel.format(detailsSlot.start)} -{" "}
                   {timeLabel.format(detailsSlot.end)}
-                </DialogDescription>
-              </DialogHeader>
+                </DrawerDescription>
+              </DrawerHeader>
 
               <ScrollArea className="max-h-[45vh]">
                 <div className="space-y-2 pr-2">
@@ -448,7 +456,7 @@ export default function InstructorDashboardPage() {
                 </CardContent>
               </Card>
 
-              <DialogFooter className="bg-transparent p-0 pt-2">
+              <DrawerFooter className="bg-transparent p-4 pt-2">
                 <Button
                   variant="outline"
                   onClick={async () => {
@@ -471,12 +479,13 @@ export default function InstructorDashboardPage() {
                 >
                   Cancelar Aula
                 </Button>
-              </DialogFooter>
+              </DrawerFooter>
             </>
           ) : null}
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
 
+      <MobileBottomNav />
     </main>
   );
 }

@@ -32,7 +32,10 @@ export function AgendaSlotList({
   return (
     <ul className="divide-y divide-slate-100">
       {slots.map((slot) => (
-        <li key={slot.id} className="px-6 py-6 sm:py-8">
+        <li
+          key={slot.id}
+          className="px-5 py-6 transition-transform active:scale-95 sm:py-8"
+        >
           <div className="flex items-start gap-4">
             <div className="w-24 shrink-0 text-left">
               <p className="font-mono text-sm font-bold tracking-tight text-slate-900">

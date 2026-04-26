@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MobileAppHeader } from "@/components/ui/mobile-app-header";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -63,8 +64,9 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10">
-      <Card className="mx-auto max-w-md bg-white shadow-sm">
+    <main className="min-h-screen bg-slate-50 py-6">
+      <MobileAppHeader title="Criar conta" showBackButton />
+      <Card className="mx-auto mt-4 max-w-md border border-slate-100 bg-white px-1 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         <CardHeader>
           <CardTitle className="text-2xl font-semibold tracking-tight">Criar conta</CardTitle>
           <CardDescription className="text-sm text-muted-foreground">
@@ -80,7 +82,7 @@ export default function RegisterPage() {
             value={fullName}
             onChange={(event) => setFullName(event.target.value)}
             autoComplete="name"
-            className="h-10"
+            className="h-11 text-[17px]"
             required
           />
           <Input
@@ -95,7 +97,7 @@ export default function RegisterPage() {
                   .replace(/--+/g, "-"),
               )
             }
-            className="h-10"
+            className="h-11 text-[17px]"
             required
           />
           <Input
@@ -104,7 +106,7 @@ export default function RegisterPage() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             autoComplete="email"
-            className="h-10"
+            className="h-11 text-[17px]"
             required
           />
           <Input
@@ -113,7 +115,7 @@ export default function RegisterPage() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             autoComplete="new-password"
-            className="h-10"
+            className="h-11 text-[17px]"
             required
           />
           {errorMessage ? (
@@ -124,7 +126,7 @@ export default function RegisterPage() {
           ) : null}
           <Button
             disabled={loading}
-            className="h-10 w-full bg-sky-500 text-white hover:bg-sky-600 disabled:opacity-70"
+            className="h-12 w-full bg-sky-500 text-white hover:bg-sky-600 disabled:opacity-70 active:scale-95 transition-transform"
           >
             {loading ? "A criar conta..." : "Criar conta"}
           </Button>

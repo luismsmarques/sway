@@ -6,6 +6,8 @@ html,
 body {
   margin: 0;
   padding: 0;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 * {
@@ -88,7 +90,7 @@ body {
     @apply border-slate-200 outline-slate-300/50;
   }
   body {
-    @apply bg-slate-50 text-slate-900;
+    @apply bg-slate-50 text-[17px] text-slate-900;
   }
   html {
     @apply font-sans;
