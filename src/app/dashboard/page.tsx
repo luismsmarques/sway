@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   cancelClassAction,
   createSlotAction,
+  createRecurringSlotsAction,
   deleteSlotAction,
   getDashboardData,
   removeBookingFromSlotAction,
@@ -60,6 +61,19 @@ const timeLabel = new Intl.DateTimeFormat("pt-PT", {
   hour: "2-digit",
   minute: "2-digit",
 });
+const shortDateLabel = new Intl.DateTimeFormat("pt-PT", {
+  day: "2-digit",
+  month: "2-digit",
+});
+const weekdayOptions = [
+  { value: 1, label: "Seg" },
+  { value: 2, label: "Ter" },
+  { value: 3, label: "Qua" },
+  { value: 4, label: "Qui" },
+  { value: 5, label: "Sex" },
+  { value: 6, label: "Sab" },
+  { value: 0, label: "Dom" },
+];
 
 function startOfDay(date: Date) {
   const d = new Date(date);
@@ -80,7 +94,11 @@ export default function InstructorDashboardPage() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [startAt, setStartAt] = useState("09:00");
+  const [repeatEnabled, setRepeatEnabled] = useState(false);
+  const [repeatWeeks, setRepeatWeeks] = useState("4");
+  const [repeatDays, setRepeatDays] = useState<number[]>([new Date().getDay()]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const reload = async () => {
     const data = await getDashboardData();
@@ -135,9 +153,61 @@ export default function InstructorDashboardPage() {
       )
     : [];
 
+  const repeatPreview = useMemo(() => {
+    if (!repeatEnabled) {
+      return null;
+    }
+
+    const base = startOfDay(selectedDay);
+    const [h, m] = startAt.split(":").map(Number);
+    base.setHours(h || 0, m || 0, 0, 0);
+    const weeks = Number(repeatWeeks);
+    if (!Number.isFinite(weeks) || weeks < 1 || repeatDays.length === 0) {
+      return { total: 0, created: 0, first: null as Date | null, last: null as Date | null };
+    }
+
+    const rangeEnd = new Date(base);
+    rangeEnd.setDate(rangeEnd.getDate() + weeks * 7);
+
+    const existing = new Set(
+      slots.map((slot) => {
+        const d = new Date(slot.start);
+        return d.toISOString();
+      }),
+    );
+
+    let total = 0;
+    let created = 0;
+    let first: Date | null = null;
+    let last: Date | null = null;
+
+    for (let day = new Date(base); day < rangeEnd; day.setDate(day.getDate() + 1)) {
+      const current = new Date(day);
+      if (!repeatDays.includes(current.getDay())) {
+        continue;
+      }
+      current.setHours(h || 0, m || 0, 0, 0);
+      if (current < base) {
+        continue;
+      }
+      total += 1;
+      const key = current.toISOString();
+      if (!existing.has(key)) {
+        created += 1;
+      }
+      if (!first) {
+        first = new Date(current);
+      }
+      last = new Date(current);
+    }
+
+    return { total, created, first, last };
+  }, [repeatDays, repeatEnabled, repeatWeeks, selectedDay, slots, startAt]);
+
   const createSlot = async (event: FormEvent) => {
     event.preventDefault();
     setErrorMessage(null);
+    setSuccessMessage(null);
     startTransition(async () => {
       try {
         const date = startOfDay(selectedDay);
@@ -146,10 +216,27 @@ export default function InstructorDashboardPage() {
         if (!selectedTemplateId) {
           throw new Error("Cria primeiro um template para adicionares slots.");
         }
-        await createSlotAction({
-          templateId: selectedTemplateId,
-          startAtISO: date.toISOString(),
-        });
+        if (repeatEnabled) {
+          const result = await createRecurringSlotsAction({
+            templateId: selectedTemplateId,
+            startAtISO: date.toISOString(),
+            recurrence: {
+              weekdays: repeatDays,
+              weeks: Number(repeatWeeks),
+            },
+          });
+          setSuccessMessage(
+            result.createdCount > 0
+              ? `${result.createdCount} slots criados com repeticao.`
+              : "Nenhum novo slot foi criado (ja existiam nestes horarios).",
+          );
+        } else {
+          await createSlotAction({
+            templateId: selectedTemplateId,
+            startAtISO: date.toISOString(),
+          });
+          setSuccessMessage("Slot criado com sucesso.");
+        }
         await reload();
         router.refresh();
         setIsDrawerOpen(false);
@@ -210,6 +297,73 @@ export default function InstructorDashboardPage() {
               value={startAt}
               onChange={(e) => setStartAt(e.target.value)}
             />
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={repeatEnabled}
+                  onChange={(event) => setRepeatEnabled(event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                Repetir slot semanalmente
+              </label>
+
+              {repeatEnabled ? (
+                <div className="mt-3 space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    {weekdayOptions.map((day) => {
+                      const isActive = repeatDays.includes(day.value);
+                      return (
+                        <button
+                          key={day.value}
+                          type="button"
+                          onClick={() =>
+                            setRepeatDays((prev) =>
+                              prev.includes(day.value)
+                                ? prev.filter((value) => value !== day.value)
+                                : [...prev, day.value],
+                            )
+                          }
+                          className={`h-8 rounded-lg border px-3 text-xs font-semibold ${
+                            isActive
+                              ? "border-slate-900 bg-slate-900 text-white"
+                              : "border-slate-200 bg-white text-slate-600"
+                          }`}
+                        >
+                          {day.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-600">
+                      Durante quantas semanas?
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={12}
+                      value={repeatWeeks}
+                      onChange={(event) => setRepeatWeeks(event.target.value)}
+                    />
+                  </div>
+                  {repeatPreview ? (
+                    <div className="rounded-lg border border-slate-200 bg-white p-2.5">
+                      <p className="text-xs text-slate-700">
+                        Preview: {repeatPreview.created} de {repeatPreview.total} slots novos
+                        {repeatPreview.first && repeatPreview.last
+                          ? ` entre ${shortDateLabel.format(repeatPreview.first)} e ${shortDateLabel.format(repeatPreview.last)}`
+                          : ""}
+                        .
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Slots ja existentes no mesmo horario sao ignorados.
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
             {errorMessage ? (
               <p className="text-sm text-rose-600">{errorMessage}</p>
             ) : null}
@@ -224,6 +378,12 @@ export default function InstructorDashboardPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {successMessage ? (
+        <section className={`${uiShell.page} pb-2`}>
+          <p className="text-sm font-medium text-emerald-700">{successMessage}</p>
+        </section>
+      ) : null}
 
       <Dialog open={Boolean(detailsSlot)} onOpenChange={(open) => !open && setDetailsSlotId(null)}>
         <DialogContent className="max-w-xl">

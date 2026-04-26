@@ -146,6 +146,109 @@ export async function createSlotAction(input: { templateId: string; startAtISO: 
   });
 }
 
+export async function createRecurringSlotsAction(input: {
+  templateId: string;
+  startAtISO: string;
+  recurrence: {
+    weekdays: number[];
+    weeks: number;
+  };
+}) {
+  const owner = await requireOwnerProfile();
+
+  const template = await prisma.template.findFirst({
+    where: { id: input.templateId, ownerId: owner.id },
+  });
+  if (!template) {
+    throw new Error("Template invalido.");
+  }
+
+  const baseStart = new Date(input.startAtISO);
+  const baseHour = baseStart.getHours();
+  const baseMinute = baseStart.getMinutes();
+  const weekdays = Array.from(new Set(input.recurrence.weekdays)).filter(
+    (day) => day >= 0 && day <= 6,
+  );
+
+  if (weekdays.length === 0) {
+    throw new Error("Seleciona pelo menos um dia da semana para repetir.");
+  }
+  if (input.recurrence.weeks < 1 || input.recurrence.weeks > 12) {
+    throw new Error("A repeticao deve estar entre 1 e 12 semanas.");
+  }
+
+  const rangeStart = new Date(baseStart);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(rangeStart);
+  rangeEnd.setDate(rangeEnd.getDate() + input.recurrence.weeks * 7);
+
+  const existingSlots = await prisma.slot.findMany({
+    where: {
+      ownerId: owner.id,
+      startTime: {
+        gte: rangeStart,
+        lt: rangeEnd,
+      },
+    },
+    select: { startTime: true },
+  });
+
+  const existingKeySet = new Set(
+    existingSlots.map((slot) => {
+      const date = new Date(slot.startTime);
+      return date.toISOString();
+    }),
+  );
+
+  const slotsToCreate: Array<{
+    ownerId: string;
+    templateId: string;
+    startTime: Date;
+    endTime: Date;
+    maxCapacity: number;
+    currentCapacity: number;
+  }> = [];
+
+  for (let day = new Date(rangeStart); day < rangeEnd; day.setDate(day.getDate() + 1)) {
+    const current = new Date(day);
+    if (!weekdays.includes(current.getDay())) {
+      continue;
+    }
+
+    current.setHours(baseHour, baseMinute, 0, 0);
+    if (current < baseStart) {
+      continue;
+    }
+
+    const key = current.toISOString();
+    if (existingKeySet.has(key)) {
+      continue;
+    }
+
+    const endTime = new Date(current);
+    endTime.setMinutes(endTime.getMinutes() + template.durationMins);
+
+    slotsToCreate.push({
+      ownerId: owner.id,
+      templateId: template.id,
+      startTime: current,
+      endTime,
+      maxCapacity: template.capacity,
+      currentCapacity: 0,
+    });
+  }
+
+  if (slotsToCreate.length === 0) {
+    return { createdCount: 0 };
+  }
+
+  await prisma.slot.createMany({
+    data: slotsToCreate,
+  });
+
+  return { createdCount: slotsToCreate.length };
+}
+
 export async function removeBookingFromSlotAction(input: { bookingId: string }) {
   const owner = await requireOwnerProfile();
 
@@ -324,5 +427,218 @@ export async function createBookingAction(input: {
         status: BookingStatus.CONFIRMED,
       },
     });
+  });
+}
+
+export async function getReconfirmationDataAction(bookingId: string) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: {
+      slot: {
+        include: {
+          template: true,
+          owner: true,
+        },
+      },
+    },
+  });
+
+  if (!booking) {
+    return null;
+  }
+
+  return {
+    id: booking.id,
+    status: booking.status,
+    studentName: booking.studentName,
+    studentPhone: booking.studentPhone,
+    slot: {
+      id: booking.slot.id,
+      startTime: booking.slot.startTime.toISOString(),
+      endTime: booking.slot.endTime.toISOString(),
+      templateTitle: booking.slot.template.title,
+      ownerName: booking.slot.owner.name,
+    },
+  };
+}
+
+export async function respondReconfirmationAction(input: {
+  bookingId: string;
+  decision: "CONFIRM" | "CANCEL";
+}) {
+  return prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.findUnique({
+      where: { id: input.bookingId },
+      include: { slot: true },
+    });
+
+    if (!booking) {
+      throw new Error("Reserva nao encontrada.");
+    }
+
+    if (input.decision === "CONFIRM") {
+      if (booking.status === BookingStatus.CANCELED) {
+        throw new Error("Esta reserva ja foi cancelada.");
+      }
+
+      await tx.booking.update({
+        where: { id: booking.id },
+        data: { status: BookingStatus.CONFIRMED },
+      });
+
+      return { status: BookingStatus.CONFIRMED };
+    }
+
+    if (booking.status === BookingStatus.CANCELED) {
+      return { status: BookingStatus.CANCELED };
+    }
+
+    await tx.booking.update({
+      where: { id: booking.id },
+      data: { status: BookingStatus.CANCELED },
+    });
+
+    await tx.slot.update({
+      where: { id: booking.slotId },
+      data: {
+        currentCapacity: {
+          decrement: booking.slot.currentCapacity > 0 ? 1 : 0,
+        },
+      },
+    });
+
+    return { status: BookingStatus.CANCELED };
+  });
+}
+
+export async function getSettingsDataAction() {
+  const owner = await requireOwnerProfile();
+
+  const templates = await prisma.template.findMany({
+    where: { ownerId: owner.id },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const settings =
+    typeof owner.settings === "object" && owner.settings ? owner.settings : {};
+
+  return {
+    profile: {
+      id: owner.id,
+      name: owner.name,
+      slug: owner.slug,
+      avatarUrl: owner.avatarUrl,
+      bio: "bio" in settings ? String(settings.bio ?? "") : "",
+      instagramUrl: "instagramUrl" in settings ? String(settings.instagramUrl ?? "") : "",
+      websiteUrl: "websiteUrl" in settings ? String(settings.websiteUrl ?? "") : "",
+    },
+    templates: templates.map((template) => ({
+      id: template.id,
+      title: template.title,
+      type: template.type,
+      durationMins: template.durationMins,
+      capacity: template.capacity,
+      price: Number(template.price),
+    })),
+  };
+}
+
+export async function updateProfileSettingsAction(input: {
+  name: string;
+  bio: string;
+  instagramUrl: string;
+  websiteUrl: string;
+  avatarUrl?: string | null;
+}) {
+  const owner = await requireOwnerProfile();
+
+  const nextSettings = {
+    ...(typeof owner.settings === "object" && owner.settings ? owner.settings : {}),
+    bio: input.bio,
+    instagramUrl: input.instagramUrl,
+    websiteUrl: input.websiteUrl,
+  };
+
+  await prisma.profile.update({
+    where: { id: owner.id },
+    data: {
+      name: input.name.trim() || owner.name,
+      avatarUrl: input.avatarUrl === undefined ? owner.avatarUrl : input.avatarUrl,
+      settings: nextSettings,
+    },
+  });
+}
+
+export async function createTemplateSettingsAction(input: {
+  title: string;
+  type: TemplateType;
+  durationMins: number;
+  capacity: number;
+  price: number;
+}) {
+  const owner = await requireOwnerProfile();
+
+  await prisma.template.create({
+    data: {
+      ownerId: owner.id,
+      title: input.title.trim(),
+      type: input.type,
+      durationMins: input.durationMins,
+      capacity: input.capacity,
+      price: input.price,
+    },
+  });
+}
+
+export async function updateTemplateSettingsAction(input: {
+  templateId: string;
+  title: string;
+  type: TemplateType;
+  durationMins: number;
+  capacity: number;
+  price: number;
+}) {
+  const owner = await requireOwnerProfile();
+
+  const template = await prisma.template.findFirst({
+    where: { id: input.templateId, ownerId: owner.id },
+  });
+  if (!template) {
+    throw new Error("Template nao encontrado.");
+  }
+
+  await prisma.template.update({
+    where: { id: template.id },
+    data: {
+      title: input.title.trim(),
+      type: input.type,
+      durationMins: input.durationMins,
+      capacity: input.capacity,
+      price: input.price,
+    },
+  });
+}
+
+export async function deleteTemplateSettingsAction(input: { templateId: string }) {
+  const owner = await requireOwnerProfile();
+
+  const template = await prisma.template.findFirst({
+    where: { id: input.templateId, ownerId: owner.id },
+  });
+  if (!template) {
+    throw new Error("Template nao encontrado.");
+  }
+
+  const attachedSlots = await prisma.slot.count({
+    where: { templateId: input.templateId, ownerId: owner.id },
+  });
+  if (attachedSlots > 0) {
+    throw new Error(
+      "Este template ja tem aulas associadas. Remove ou reatribui esses slots antes de eliminar.",
+    );
+  }
+
+  await prisma.template.delete({
+    where: { id: input.templateId },
   });
 }

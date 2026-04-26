@@ -13,10 +13,13 @@ Funcionalidades principais implementadas:
 - Landing page de marketing em `/`.
 - Autenticacao com Supabase Auth (login/registo com slug).
 - Dashboard protegido em `/dashboard` com isolamento por instrutor.
+- Settings do instrutor em `/dashboard/settings` (perfil, avatar, redes e templates).
 - Criacao de slots via barra de acoes agrupada (filtros + data + CTA).
+- Repeticao de slots com preview (dias da semana + semanas).
 - Deteccao visual de conflitos de horario.
 - Gestao de inscritos por slot (detalhe de aula, remocao, cancelamento de aula).
 - Pagina publica de reservas em `/book/[slug]`.
+- Fluxo de re-confirmacao do aluno em `/reconfirm/[bookingId]`.
 - Tracking de alunos por telemovel (unico por instrutor).
 - Persistencia real com Prisma + transacoes.
 - Refatoracao visual premium com Layout Shell unificado + design tokens semanticos.
@@ -41,11 +44,13 @@ src/
   app/
     page.tsx                 # Landing page (marketing)
     dashboard/page.tsx       # Dashboard do instrutor (protegido)
+    dashboard/settings/page.tsx # Settings (branding + templates)
     login/page.tsx           # Login (publico)
     register/page.tsx        # Registo (publico)
     auth/login/page.tsx      # Login
     auth/register/page.tsx   # Registo
     book/[slug]/page.tsx     # Pagina publica de reservas
+    reconfirm/[bookingId]/page.tsx # Decisao de re-confirmacao do aluno
     templates/new/page.tsx   # UI de criacao de templates
     actions.ts               # Server Actions e transacoes Prisma
   components/ui/dashboard/
@@ -80,6 +85,7 @@ Base visual atual:
 - Acoes primarias com `shadow-sm` e `active:scale-[0.98]`.
 - Formularios com `Input` Shadcn para consistencia entre paginas.
 - Dashboard com feed estruturado em lista integrada (`ul/li + divide-y`).
+- Modal de criacao com repeticao semanal e preview de slots antes de guardar.
 - Checkout do aluno com `Drawer` (mobile-first, slide-up).
 - Raio global modernizado em `--radius: 1rem` no `globals.css`.
 - Tokens visuais centralizados:
@@ -179,6 +185,20 @@ Implementadas em `src/app/actions.ts`:
   - remove slot
   - transacional
 
+- `createRecurringSlotsAction`
+  - cria slots recorrentes por dias da semana e numero de semanas
+  - evita duplicados em horarios ja existentes
+
+- `respondReconfirmationAction`
+  - aluno confirma ou cancela via link publico `/reconfirm/[bookingId]`
+  - ao cancelar, liberta capacidade do slot de forma transacional
+
+- `getSettingsDataAction` + `updateProfileSettingsAction`
+  - gerir branding do instrutor (nome, bio, avatar, redes)
+
+- `createTemplateSettingsAction` / `updateTemplateSettingsAction` / `deleteTemplateSettingsAction`
+  - CRUD real de templates no dashboard settings
+
 ## Setup local
 
 ### 1) Requisitos
@@ -209,6 +229,8 @@ SUPABASE_SERVICE_ROLE_KEY=
 ```
 
 > `DATABASE_URL` e usado pelo Prisma.
+
+Para upload de avatar, cria no Supabase Storage um bucket publico chamado `avatars`.
 
 ### 4) Aplicar schema no Supabase
 
@@ -267,7 +289,9 @@ Usa estes caminhos para testar rapidamente os fluxos principais:
 - `/login` - Login de instrutor
 - `/register` - Registo com escolha de slug
 - `/dashboard` - Painel do instrutor (rota protegida)
+- `/dashboard/settings` - Branding do instrutor + CRUD de templates
 - `/book/[slug]` - Pagina publica de reservas (exemplo: `/book/joao-surf`)
+- `/reconfirm/[bookingId]` - Re-confirmacao de aula apos alteracao de horario
 
 ## Troubleshooting
 
@@ -298,9 +322,18 @@ Isto protege contra overbooking em concorrencia.
 - Deploy de producao publicado na Vercel:
   - `https://sway-qki86huh1-luis-projects-1d97c46f.vercel.app`
 
+### 2026-04-26 - Reconfirmation + Settings + Recurrence
+
+- Nova rota publica `/reconfirm/[bookingId]` para aluno decidir confirmar ou cancelar apos alteracao de horario.
+- Nova pagina `/dashboard/settings` para branding do instrutor:
+  - nome publico, bio, links sociais e avatar no Supabase Storage.
+- CRUD real de templates dentro de settings (criar, editar, eliminar com validacao de slots associados).
+- Criacao recorrente de slots no dashboard com preview:
+  - selecao de dias da semana + numero de semanas
+  - contagem de slots novos e intervalo de datas antes de guardar.
+
 ## Roadmap
 
-- CRUD real de templates (sem mocks)
 - Integracao SMS (Twilio) para reagendamentos
 - Testes automatizados E2E dos fluxos criticos
 
