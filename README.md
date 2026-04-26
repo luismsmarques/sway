@@ -217,6 +217,16 @@ vercel env add SUPABASE_SERVICE_ROLE_KEY production
 vercel --prod
 ```
 
+## Quick Demo Links
+
+Usa estes caminhos para testar rapidamente os fluxos principais:
+
+- `/` - Landing page (marketing)
+- `/login` - Login de instrutor
+- `/register` - Registo com escolha de slug
+- `/dashboard` - Painel do instrutor (rota protegida)
+- `/book/[slug]` - Pagina publica de reservas (exemplo: `/book/joao-surf`)
+
 ## Troubleshooting
 
 ### `column "student_id" does not exist`
