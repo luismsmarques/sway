@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CalendarPlus2, Users, BellRing, Star } from "lucide-react";
+import { uiButton, uiShell } from "@/components/ui/dashboard/ui-tokens";
 
 const features = [
   {
@@ -42,12 +43,10 @@ const testimonials = [
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-slate-50">
-      <section className="mx-auto max-w-6xl px-4 py-16 md:py-24">
-        <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-sky-700">
-          Solo-Flow
-        </p>
-        <div className="grid items-center gap-10 lg:grid-cols-2">
+    <main className="min-h-screen bg-[#F9FAFB]">
+      <section className={`${uiShell.page} py-12 sm:py-16`}>
+        <p className={`mb-3 ${uiShell.eyebrow}`}>Solo-Flow</p>
+        <div className={`grid items-center gap-6 p-6 lg:grid-cols-2 ${uiShell.card}`}>
           <div>
             <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-slate-900 md:text-5xl">
               A agenda que se adapta ao teu flow.
@@ -60,7 +59,7 @@ export default function LandingPage() {
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/register"
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-sky-500 px-6 text-sm font-semibold text-white transition hover:bg-sky-600"
+                className={`inline-flex h-12 items-center justify-center rounded-xl px-6 text-sm font-semibold transition ${uiButton.primary}`}
               >
                 Comecar Agora Gratuitamente
               </Link>
@@ -73,9 +72,9 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
-            <div className="mx-auto w-full max-w-xs rounded-[2rem] border border-slate-200 bg-slate-50 p-3 shadow-inner">
-              <div className="rounded-[1.5rem] bg-white p-4 ring-1 ring-slate-200/70">
+          <article className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-none">
+            <div className="mx-auto w-full max-w-xs rounded-[2rem] border border-slate-200 bg-white p-3">
+              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Reserva rapida
                 </p>
@@ -83,7 +82,7 @@ export default function LandingPage() {
                   Aula Surf 90min
                 </h3>
                 <p className="mt-1 text-sm text-slate-600">Apenas 3 vagas disponiveis</p>
-                <button className="mt-4 h-10 w-full rounded-xl bg-sky-500 text-sm font-semibold text-white">
+                <button className={`mt-4 h-10 w-full rounded-xl text-sm font-semibold ${uiButton.primary}`}>
                   Reservar
                 </button>
               </div>
@@ -95,17 +94,17 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-8 md:py-12">
-        <h2 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
+      <section className={`${uiShell.page} py-6 sm:py-8`}>
+        <h2 className={`${uiShell.sectionTitle} md:text-3xl`}>
           Tudo o que precisas para gerir reservas sem friccao
         </h2>
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           {features.map((feature) => (
             <article
               key={feature.title}
-              className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70"
+              className={`${uiShell.card} p-5`}
             >
-              <feature.icon className="h-5 w-5 text-sky-600" />
+              <feature.icon className="h-5 w-5 text-slate-700" />
               <h3 className="mt-3 text-base font-semibold text-slate-900">
                 {feature.title}
               </h3>
@@ -115,17 +114,17 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-8 md:py-12">
-        <h2 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
+      <section className={`${uiShell.page} py-6 sm:py-8`}>
+        <h2 className={`${uiShell.sectionTitle} md:text-3xl`}>
           Instrutores em modo flow
         </h2>
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           {testimonials.map((item) => (
             <article
               key={item.author}
-              className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70"
+              className={`${uiShell.card} p-5`}
             >
-              <div className="flex items-center gap-1 text-sky-600">
+              <div className="flex items-center gap-1 text-slate-700">
                 <Star className="h-4 w-4 fill-current" />
                 <Star className="h-4 w-4 fill-current" />
                 <Star className="h-4 w-4 fill-current" />
@@ -141,9 +140,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 pb-16 pt-6 md:pb-24">
-        <div className="rounded-3xl bg-white px-6 py-10 text-center shadow-sm ring-1 ring-slate-200/70">
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
+      <section className={`${uiShell.page} pb-12 pt-4 sm:pb-16`}>
+        <div className={`${uiShell.card} px-6 py-10 text-center`}>
+          <h2 className={`${uiShell.sectionTitle} md:text-3xl`}>
             Pronto para trocar caos por flow?
           </h2>
           <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-600 md:text-base">
@@ -152,7 +151,7 @@ export default function LandingPage() {
           </p>
           <Link
             href="/register"
-            className="mt-6 inline-flex h-12 items-center justify-center rounded-xl bg-sky-500 px-6 text-sm font-semibold text-white transition hover:bg-sky-600"
+            className={`mt-6 inline-flex h-12 items-center justify-center rounded-xl px-6 text-sm font-semibold transition ${uiButton.primary}`}
           >
             Comecar Agora Gratuitamente
           </Link>

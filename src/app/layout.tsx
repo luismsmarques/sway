@@ -20,7 +20,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt" className={cn("font-sans", geist.variable)}>
-      <body className={inter.className}>{children}</body>
+      <body className={cn(inter.className, "bg-[#F9FAFB] text-slate-900 antialiased")}>
+        {children}
+      </body>
     </html>
   );
 }

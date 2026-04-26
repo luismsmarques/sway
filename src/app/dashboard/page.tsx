@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState, useTransition } from "react";
-import { Plus, Trash2, UserRound } from "lucide-react";
+import { Trash2, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   cancelClassAction,
@@ -30,44 +30,26 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+import { DashboardHeader } from "@/components/ui/dashboard/dashboard-header";
+import { DashboardActionBar } from "@/components/ui/dashboard/dashboard-action-bar";
+import { AgendaSlotList } from "@/components/ui/dashboard/agenda-slot-list";
+import {
+  INFO_BADGE_STYLE,
+  TEMPLATE_BADGE_STYLES,
+  WARNING_SURFACE_STYLE,
+  WARNING_TEXT_STYLE,
+} from "@/components/ui/dashboard/status-tokens";
+import { uiShell } from "@/components/ui/dashboard/ui-tokens";
+import {
+  Booking,
+  QuickFilter,
+  Slot,
+  Student,
+  Template,
+  TemplateType,
+} from "@/components/ui/dashboard/types";
 
-type TemplateType = "PRIVATE" | "GROUP";
-type QuickFilter = "TODAY" | "TOMORROW" | "WEEK";
-
-type Slot = {
-  id: string;
-  ownerId: string;
-  templateId: string;
-  templateTitle: string;
-  templateType: TemplateType;
-  start: Date;
-  end: Date;
-  capacity: number;
-  booked: number;
-};
-type Booking = {
-  id: string;
-  ownerId: string;
-  slotId: string;
-  studentId: string | null;
-  studentName: string;
-  studentPhone: string;
-  status: "PENDING" | "CONFIRMED" | "CANCELED";
-  createdAt: string;
-};
-type Student = { id: string; ownerId: string; phone: string; name: string };
-type Template = {
-  id: string;
-  title: string;
-  durationMins: number;
-  type: TemplateType;
-};
-
-const badgeStyles: Record<TemplateType, string> = {
-  PRIVATE: "bg-sky-50 text-sky-700 ring-sky-200",
-  GROUP: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-};
+const badgeStyles: Record<TemplateType, string> = TEMPLATE_BADGE_STYLES;
 
 const dayLabel = new Intl.DateTimeFormat("pt-PT", {
   weekday: "long",
@@ -180,84 +162,25 @@ export default function InstructorDashboardPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto max-w-4xl px-4 py-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Daily Feed
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-            {dayLabel.format(selectedDay)}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Organiza as aulas do dia e gere inscritos sem friccao.
-          </p>
-          <div className="mt-3 flex gap-2">
-            {(["TODAY", "TOMORROW", "WEEK"] as const).map((f) => (
-              <Button
-                key={f}
-                type="button"
-                onClick={() => setQuickFilter(f)}
-                variant={quickFilter === f ? "default" : "outline"}
-                size="sm"
-                className={`rounded-full ${
-                  quickFilter === f
-                    ? "bg-sky-500 text-white hover:bg-sky-600"
-                    : "text-slate-600"
-                }`}
-              >
-                {f === "TODAY" ? "Hoje" : f === "TOMORROW" ? "Amanha" : "Esta Semana"}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-4xl space-y-4 px-4 pb-24 pt-5">
-        {filteredSlots.map((slot) => (
-          <Card
-            key={slot.id}
-            className="cursor-pointer bg-white shadow-sm"
-            onClick={() => setDetailsSlotId(slot.id)}
-          >
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">
-                {slot.templateTitle}
-              </CardTitle>
-              <CardDescription className="text-sm text-muted-foreground">
-                {timeLabel.format(slot.start)} - {timeLabel.format(slot.end)}
-              </CardDescription>
-              <CardAction>
-                <Badge className={badgeStyles[slot.templateType]} variant="outline">
-                  {slot.templateType === "GROUP" ? "Grupo" : "Privada"}
-                </Badge>
-              </CardAction>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {slot.templateType === "GROUP" ? (
-                <p className="text-sm text-muted-foreground">
-                  🟢 {slot.booked} vagas ocupadas de {slot.capacity}
-                </p>
-              ) : (
-                <p className="text-sm text-muted-foreground">Sessao individual</p>
-              )}
-              <Separator />
-              <p className="text-xs text-muted-foreground">
-                Toque para abrir detalhes da aula e gerir inscritos.
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+    <main className="min-h-screen bg-[#F9FAFB] pb-10">
+      <div className={`${uiShell.page} py-6 sm:py-8`}>
+        <section className={uiShell.card}>
+          <DashboardHeader formattedDate={dayLabel.format(selectedDay)} />
+          <DashboardActionBar
+            quickFilter={quickFilter}
+            selectedDateValue={startOfDay(selectedDay).toISOString().slice(0, 10)}
+            onFilterChange={setQuickFilter}
+            onDateChange={(value) => setSelectedDay(new Date(value))}
+            onAddSlot={() => setIsDrawerOpen(true)}
+          />
+          <AgendaSlotList
+            slots={filteredSlots}
+            formatTime={(date) => timeLabel.format(date)}
+            badgeStyles={badgeStyles}
+            onOpenDetails={setDetailsSlotId}
+          />
+        </section>
       </div>
-
-      <Button
-        type="button"
-        onClick={() => setIsDrawerOpen(true)}
-        size="icon"
-        className="fixed bottom-8 right-8 z-30 rounded-full bg-sky-500 text-white shadow-lg hover:bg-sky-600"
-      >
-        <Plus className="h-5 w-5" />
-      </Button>
 
       <Dialog open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
         <DialogContent className="sm:max-w-md">
@@ -327,7 +250,7 @@ export default function InstructorDashboardPage() {
                             {booking.studentName}
                           </p>
                           <p className="text-xs text-muted-foreground">{booking.studentPhone}</p>
-                          <Badge variant="outline" className="mt-1 bg-sky-50 text-sky-700">
+                          <Badge variant="outline" className={`mt-1 ${INFO_BADGE_STYLE}`}>
                             {
                               bookings.filter(
                                 (b) =>
@@ -355,9 +278,9 @@ export default function InstructorDashboardPage() {
                 </div>
               </ScrollArea>
 
-              <Card className="bg-rose-50 shadow-sm ring-rose-200">
+              <Card className={`${WARNING_SURFACE_STYLE} shadow-sm`}>
                 <CardContent>
-                  <p className="text-sm text-rose-700">
+                  <p className={`text-sm ${WARNING_TEXT_STYLE}`}>
                     {detailsBookings.length > 0
                       ? `Esta aula tem ${detailsBookings.length} alunos. Ao cancelar, todos serao notificados.`
                       : "Esta aula ainda nao tem alunos inscritos."}
@@ -394,20 +317,6 @@ export default function InstructorDashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {filteredSlots.length === 0 ? (
-        <section className="mx-auto mt-2 max-w-4xl px-4">
-          <Card className="bg-white text-center shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-2xl font-semibold tracking-tight">
-                Sem slots para mostrar
-              </CardTitle>
-              <CardDescription className="text-sm text-muted-foreground">
-                Perfeito para comecar. Toca no + e adiciona o primeiro horario.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </section>
-      ) : null}
     </main>
   );
 }

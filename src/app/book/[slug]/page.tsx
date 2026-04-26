@@ -4,42 +4,30 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { createBookingAction, getPublicBookingData } from "@/app/actions";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { AvailabilityDayList } from "@/components/ui/dashboard/availability-day-list";
+import { BookingDrawerForm } from "@/components/ui/dashboard/booking-drawer-form";
 import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
-import { Input } from "@/components/ui/input";
+  CapacityState,
+  PublicInstructor,
+  PublicSlot,
+  TemplateType,
+} from "@/components/ui/dashboard/public-booking-types";
+import {
+  getCapacityBadgeState,
+  TEMPLATE_BADGE_STYLES,
+} from "@/components/ui/dashboard/status-tokens";
+import { StudentProfileHero } from "@/components/ui/dashboard/student-profile-hero";
+import { uiButton, uiShell } from "@/components/ui/dashboard/ui-tokens";
 
-type TemplateType = "PRIVATE" | "GROUP";
-
-type PublicSlot = {
-  id: string;
-  title: string;
-  type: TemplateType;
-  startTime: string;
-  endTime: string;
-  totalCapacity: number;
-  currentCapacity: number; // remaining spots
-};
-
-const typeBadgeStyles: Record<TemplateType, string> = {
-  PRIVATE: "bg-sky-50 text-sky-700 ring-sky-200",
-  GROUP: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-};
+const typeBadgeStyles: Record<TemplateType, string> = TEMPLATE_BADGE_STYLES;
 
 const dayLabel = new Intl.DateTimeFormat("pt-PT", {
   weekday: "short",
@@ -82,12 +70,7 @@ export default function PublicBookingPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const slug = params?.slug ?? "";
-  const [instructor, setInstructor] = useState<{
-    slug: string;
-    name: string;
-    avatarUrl: string | null;
-    bio: string;
-  } | null>(null);
+  const [instructor, setInstructor] = useState<PublicInstructor | null>(null);
   const [slots, setSlots] = useState<PublicSlot[]>([]);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [lastBookedSlot, setLastBookedSlot] = useState<PublicSlot | null>(null);
@@ -197,27 +180,16 @@ export default function PublicBookingPage() {
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
-  const capacityBadge = (slot: PublicSlot) => {
-    if (slot.currentCapacity <= 0) {
-      return { label: "Esgotado", className: "bg-rose-50 text-rose-700 ring-rose-200" };
-    }
-    if (slot.currentCapacity <= 2) {
-      return {
-        label: "Ultimas Vagas",
-        className: "bg-amber-50 text-amber-700 ring-amber-200",
-      };
-    }
-    return { label: "Livre", className: "bg-emerald-50 text-emerald-700 ring-emerald-200" };
+  const capacityBadge = (slot: PublicSlot): CapacityState => {
+    return getCapacityBadgeState(slot.currentCapacity);
   };
 
   if (!instructor) {
     return (
-      <main className="min-h-screen bg-slate-50 px-4 py-6 font-sans">
-        <Card className="mx-auto max-w-[450px] bg-white text-center shadow-sm">
+      <main className="min-h-screen bg-[#F9FAFB] py-6 font-sans sm:py-8">
+        <Card className={`mx-auto w-full max-w-4xl text-center ${uiShell.card}`}>
           <CardHeader>
-            <CardTitle className="text-2xl font-semibold tracking-tight">
-              Perfil nao encontrado
-            </CardTitle>
+            <CardTitle className={uiShell.sectionTitle}>Perfil nao encontrado</CardTitle>
             <CardDescription className="text-sm text-muted-foreground">
               Verifica se o link esta correto.
             </CardDescription>
@@ -228,175 +200,50 @@ export default function PublicBookingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-5 font-sans">
-      <div className="mx-auto max-w-[450px] space-y-4">
-        <Card className="bg-white shadow-sm">
-          <CardContent className="pt-1">
-            <div className="flex items-center gap-3">
-              <img
-                src={
-                  instructor.avatarUrl ??
-                  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80&auto=format&fit=crop"
-                }
-                alt={instructor.name}
-                className="h-14 w-14 rounded-full object-cover ring-2 ring-white"
-              />
-              <div>
-                <p className="text-sm text-muted-foreground">/book/{instructor.slug}</p>
-                <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-                  {instructor.name}
-                </h1>
-                <p className="text-sm text-muted-foreground">{instructor.bio}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+    <main className="min-h-screen bg-[#F9FAFB] py-6 font-sans sm:py-8">
+      <div className={`${uiShell.page} space-y-4`}>
+        <StudentProfileHero instructor={instructor} />
 
         {successMessage ? (
-          <Card className="bg-white text-center shadow-sm">
+          <Card className={`${uiShell.card} text-center`}>
             <CardHeader>
-              <CardTitle className="text-2xl font-semibold tracking-tight">
-                {successMessage}
-              </CardTitle>
-              <CardDescription className="text-sm text-muted-foreground">
+              <CardTitle className={uiShell.sectionTitle}>{successMessage}</CardTitle>
+              <CardDescription className="text-sm text-slate-600">
                 Reserva confirmada com sucesso.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={addToCalendar} className="w-full bg-sky-500 hover:bg-sky-600">
+              <Button onClick={addToCalendar} className={`w-full ${uiButton.primary}`}>
                 Adicionar ao Calendario
               </Button>
             </CardContent>
           </Card>
         ) : null}
 
-        {Object.keys(groupedSlots).length === 0 ? (
-          <Card className="bg-white text-center shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-2xl font-semibold tracking-tight">
-                Sem horarios disponiveis
-              </CardTitle>
-              <CardDescription className="text-sm text-muted-foreground">
-                Volta mais tarde para novas aulas.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        ) : (
-          <section className="space-y-4">
-            {Object.entries(groupedSlots).map(([day, daySlots]) => (
-              <div key={day} className="space-y-2">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                  {dayLabel.format(new Date(day))}
-                </h2>
-
-                <div className="space-y-3">
-                  {daySlots.map((slot) => {
-                    const isFull = slot.currentCapacity <= 0;
-                    const state = capacityBadge(slot);
-                    return (
-                      <Card key={slot.id} className="bg-white shadow-sm">
-                        <CardHeader>
-                          <CardTitle className="text-base">{slot.title}</CardTitle>
-                          <CardDescription className="text-sm text-muted-foreground">
-                            {timeLabel.format(new Date(slot.startTime))} -{" "}
-                            {timeLabel.format(new Date(slot.endTime))}
-                          </CardDescription>
-                          <CardAction className="flex gap-2">
-                            <Badge variant="outline" className={typeBadgeStyles[slot.type]}>
-                              {slot.type === "GROUP" ? "Grupo" : "Privada"}
-                            </Badge>
-                            <Badge variant="outline" className={state.className}>
-                              {state.label}
-                            </Badge>
-                          </CardAction>
-                        </CardHeader>
-                        <CardContent>
-                          {slot.type === "GROUP" ? (
-                            <p className="text-sm text-muted-foreground">
-                              {slot.currentCapacity > 0
-                                ? `${slot.currentCapacity} vagas disponiveis`
-                                : "Sem vagas disponiveis"}
-                            </p>
-                          ) : (
-                            <p className="text-sm text-muted-foreground">
-                              Sessao individual disponivel.
-                            </p>
-                          )}
-                          <Button
-                            type="button"
-                            onClick={() => openCheckout(slot.id)}
-                            disabled={isFull}
-                            className="mt-3 w-full bg-sky-600 hover:bg-sky-700"
-                          >
-                            {isFull ? "Esgotado" : "Reservar"}
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </section>
-        )}
+        <AvailabilityDayList
+          groupedSlots={groupedSlots}
+          dayLabel={(date) => dayLabel.format(date)}
+          timeLabel={(date) => timeLabel.format(date)}
+          typeBadgeStyles={typeBadgeStyles}
+          capacityBadge={capacityBadge}
+          onOpenCheckout={openCheckout}
+        />
       </div>
 
-      <Drawer open={Boolean(selectedSlot)} onOpenChange={(open) => !open && closeCheckout()}>
-        <DrawerContent>
-          {selectedSlot ? (
-            <>
-              <DrawerHeader className="text-left">
-                <DrawerTitle className="text-2xl font-semibold tracking-tight">
-                  Finalizar reserva
-                </DrawerTitle>
-                <DrawerDescription className="text-sm text-muted-foreground">
-                  {selectedSlot.title} - {timeLabel.format(new Date(selectedSlot.startTime))}
-                </DrawerDescription>
-              </DrawerHeader>
-              <div className="space-y-4 px-4 pb-2">
-                <div className="space-y-2">
-                  <label htmlFor="student_name" className="text-sm font-medium text-slate-700">
-                    Nome
-                  </label>
-                  <Input
-                    id="student_name"
-                    value={studentName}
-                    onChange={(event) => setStudentName(event.target.value)}
-                    placeholder="O teu nome"
-                    className="h-10"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label htmlFor="student_phone" className="text-sm font-medium text-slate-700">
-                    Telemovel
-                  </label>
-                  <Input
-                    id="student_phone"
-                    value={studentPhone}
-                    onChange={(event) => setStudentPhone(event.target.value)}
-                    placeholder="+351 9xx xxx xxx"
-                    inputMode="numeric"
-                    pattern="[0-9+ ]*"
-                    className="h-10"
-                  />
-                </div>
-                {errorMessage ? (
-                  <p className="text-sm font-medium text-rose-600">{errorMessage}</p>
-                ) : null}
-              </div>
-              <DrawerFooter>
-                <Button type="button" onClick={handleConfirmBooking} disabled={isPending}>
-                  {isPending ? "A confirmar..." : "Confirmar Reserva"}
-                </Button>
-                <Button type="button" variant="outline" onClick={closeCheckout}>
-                  Cancelar
-                </Button>
-              </DrawerFooter>
-            </>
-          ) : null}
-        </DrawerContent>
-      </Drawer>
+      <BookingDrawerForm
+        selectedSlot={selectedSlot}
+        open={Boolean(selectedSlot)}
+        studentName={studentName}
+        studentPhone={studentPhone}
+        errorMessage={errorMessage}
+        isPending={isPending}
+        formatTime={(date) => timeLabel.format(date)}
+        onOpenChange={(open) => !open && closeCheckout()}
+        onStudentNameChange={setStudentName}
+        onStudentPhoneChange={setStudentPhone}
+        onConfirm={handleConfirmBooking}
+        onCancel={closeCheckout}
+      />
     </main>
   );
 }

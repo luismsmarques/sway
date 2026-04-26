@@ -13,13 +13,13 @@ Funcionalidades principais implementadas:
 - Landing page de marketing em `/`.
 - Autenticacao com Supabase Auth (login/registo com slug).
 - Dashboard protegido em `/dashboard` com isolamento por instrutor.
-- Criacao de slots via drawer e botao flutuante.
+- Criacao de slots via barra de acoes agrupada (filtros + data + CTA).
 - Deteccao visual de conflitos de horario.
 - Gestao de inscritos por slot (detalhe de aula, remocao, cancelamento de aula).
 - Pagina publica de reservas em `/book/[slug]`.
 - Tracking de alunos por telemovel (unico por instrutor).
 - Persistencia real com Prisma + transacoes.
-- Refatoracao visual com Shadcn/UI (dashboard, booking, auth, templates).
+- Refatoracao visual premium com Layout Shell unificado + design tokens semanticos.
 - Deploy em Vercel.
 
 ## Stack tecnica
@@ -48,6 +48,17 @@ src/
     book/[slug]/page.tsx     # Pagina publica de reservas
     templates/new/page.tsx   # UI de criacao de templates
     actions.ts               # Server Actions e transacoes Prisma
+  components/ui/dashboard/
+    dashboard-header.tsx     # Header de navegacao do painel
+    dashboard-action-bar.tsx # Barra de acoes agrupada
+    agenda-slot-list.tsx     # Feed de agenda em ul/li com divide-y
+    student-profile-hero.tsx # Hero premium da pagina publica
+    availability-day-list.tsx# Lista de horarios agrupada por dia
+    booking-drawer-form.tsx  # Checkout da reserva (drawer)
+    ui-tokens.ts             # Tokens visuais (shell + botoes)
+    status-tokens.ts         # Tokens semanticos de estado/badges
+    types.ts                 # Tipos do dashboard
+    public-booking-types.ts  # Tipos da pagina publica
   lib/
     prisma.ts                # Prisma singleton client
 prisma/
@@ -60,18 +71,25 @@ supabase/
 
 Base visual atual:
 
-- Fundo global em `bg-slate-50`.
-- Agrupamento de informacao com `Card` (`bg-white` + `shadow-sm`).
+- Layout Shell global em `bg-[#F9FAFB]`.
+- Conteudo centralizado em `max-w-4xl` (desktop) e margens fixas no mobile.
+- Agrupamento de informacao com cards brancos (`border border-slate-200` + `shadow-none`).
 - Hierarquia tipografica consistente:
   - Titulos: `text-2xl font-semibold tracking-tight`
-  - Descricoes: `text-sm text-muted-foreground`
-- Acoes primarias com `Button` Shadcn.
+  - Descricoes: `text-sm text-slate-600`
+- Acoes primarias com `shadow-sm` e `active:scale-[0.98]`.
 - Formularios com `Input` Shadcn para consistencia entre paginas.
+- Dashboard com feed estruturado em lista integrada (`ul/li + divide-y`).
 - Checkout do aluno com `Drawer` (mobile-first, slide-up).
 - Raio global modernizado em `--radius: 1rem` no `globals.css`.
+- Tokens visuais centralizados:
+  - `ui-tokens.ts`: shell, cards, titulos e botoes
+  - `status-tokens.ts`: badges de tipo/capacidade/aviso/info
 
 Pags refatoradas:
 
+- `src/app/layout.tsx`
+- `src/app/page.tsx`
 - `src/app/dashboard/page.tsx`
 - `src/app/book/[slug]/page.tsx`
 - `src/app/templates/new/page.tsx`
