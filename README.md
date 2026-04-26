@@ -19,6 +19,7 @@ Funcionalidades principais implementadas:
 - Pagina publica de reservas em `/book/[slug]`.
 - Tracking de alunos por telemovel (unico por instrutor).
 - Persistencia real com Prisma + transacoes.
+- Refatoracao visual com Shadcn/UI (dashboard, booking, auth, templates).
 - Deploy em Vercel.
 
 ## Stack tecnica
@@ -31,6 +32,7 @@ Funcionalidades principais implementadas:
 - Vercel (hosting)
 - Lucide React (icones)
 - canvas-confetti (feedback visual na reserva)
+- Shadcn/UI (Card, Button, Dialog, Drawer, Badge, Input, ScrollArea, Separator)
 
 ## Estrutura da app
 
@@ -53,6 +55,28 @@ prisma/
 supabase/
   schema.sql                 # Schema SQL para Supabase
 ```
+
+## Design System UI/UX
+
+Base visual atual:
+
+- Fundo global em `bg-slate-50`.
+- Agrupamento de informacao com `Card` (`bg-white` + `shadow-sm`).
+- Hierarquia tipografica consistente:
+  - Titulos: `text-2xl font-semibold tracking-tight`
+  - Descricoes: `text-sm text-muted-foreground`
+- Acoes primarias com `Button` Shadcn.
+- Formularios com `Input` Shadcn para consistencia entre paginas.
+- Checkout do aluno com `Drawer` (mobile-first, slide-up).
+- Raio global modernizado em `--radius: 1rem` no `globals.css`.
+
+Pags refatoradas:
+
+- `src/app/dashboard/page.tsx`
+- `src/app/book/[slug]/page.tsx`
+- `src/app/templates/new/page.tsx`
+- `src/app/auth/login/page.tsx`
+- `src/app/auth/register/page.tsx`
 
 ## Modelo de dados
 

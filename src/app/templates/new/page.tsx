@@ -1,25 +1,45 @@
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+
 type TemplateType = "PRIVATE" | "GROUP";
 
 const typeStyles: Record<TemplateType, string> = {
-  PRIVATE: "border-sky-200 bg-sky-50 text-sky-700",
-  GROUP: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  PRIVATE: "bg-sky-50 text-sky-700 ring-sky-200",
+  GROUP: "bg-emerald-50 text-emerald-700 ring-emerald-200",
 };
 
 export default function NewTemplatePage() {
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-5 md:p-10">
-      <div className="mx-auto max-w-2xl space-y-6">
-        <header className="space-y-2">
+    <main className="min-h-screen bg-slate-50 px-4 py-6 md:p-10">
+      <div className="mx-auto max-w-2xl space-y-5">
+        <header className="space-y-1">
           <p className="text-sm font-medium text-slate-500">Solo-Flow</p>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
             Criar Template
           </h1>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-muted-foreground">
             Define um molde de aula para poderes criar slots em segundos.
           </p>
         </header>
 
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200/70 md:p-8">
+        <Card className="bg-white shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-2xl font-semibold tracking-tight">
+              Dados do Template
+            </CardTitle>
+            <CardDescription className="text-sm text-muted-foreground">
+              Preenche os campos para criar um molde reutilizavel.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
           <form className="space-y-6">
             <div className="space-y-2">
               <label
@@ -28,11 +48,11 @@ export default function NewTemplatePage() {
               >
                 Nome do template
               </label>
-              <input
+              <Input
                 id="title"
                 name="title"
                 placeholder="Ex.: Aula Surf 90min"
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                className="h-10"
               />
             </div>
 
@@ -42,7 +62,7 @@ export default function NewTemplatePage() {
                 {(["PRIVATE", "GROUP"] as const).map((type) => (
                   <label
                     key={type}
-                    className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium ${typeStyles[type]}`}
+                    className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium"
                   >
                     <input
                       type="radio"
@@ -52,6 +72,9 @@ export default function NewTemplatePage() {
                       className="h-4 w-4 border-slate-300 text-sky-600 focus:ring-sky-300"
                     />
                     {type === "PRIVATE" ? "Privada" : "Grupo"}
+                    <Badge className={`ml-auto ${typeStyles[type]}`} variant="outline">
+                      {type === "PRIVATE" ? "1:1" : "Turma"}
+                    </Badge>
                   </label>
                 ))}
               </div>
@@ -65,14 +88,14 @@ export default function NewTemplatePage() {
                 >
                   Duração (min)
                 </label>
-                <input
+                <Input
                   id="duration_mins"
                   name="duration_mins"
                   type="number"
                   min={15}
                   step={15}
                   defaultValue={60}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                  className="h-10"
                 />
               </div>
 
@@ -83,13 +106,13 @@ export default function NewTemplatePage() {
                 >
                   Capacidade
                 </label>
-                <input
+                <Input
                   id="capacity"
                   name="capacity"
                   type="number"
                   min={1}
                   defaultValue={1}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                  className="h-10"
                 />
               </div>
 
@@ -100,34 +123,35 @@ export default function NewTemplatePage() {
                 >
                   Preço (EUR)
                 </label>
-                <input
+                <Input
                   id="price"
                   name="price"
                   type="number"
                   min={0}
                   step="0.01"
                   defaultValue={0}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                  className="h-10"
                 />
               </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-2">
-              <button
+              <Button
                 type="button"
-                className="h-11 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                variant="outline"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
-                className="h-11 rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-700"
+                className="bg-sky-600 text-white hover:bg-sky-700"
               >
                 Guardar Template
-              </button>
+              </Button>
             </div>
           </form>
-        </section>
+          </CardContent>
+        </Card>
       </div>
     </main>
   );
