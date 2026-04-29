@@ -3,19 +3,24 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum TemplateType {
   PRIVATE
   GROUP
+
+  @@map("template_type")
 }
 
 enum BookingStatus {
   PENDING
   CONFIRMED
   CANCELED
+
+  @@map("booking_status")
 }
 
 model Profile {

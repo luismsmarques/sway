@@ -1,19 +1,16 @@
-import { Ellipsis } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Ellipsis, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slot } from "./types";
 
 type AgendaSlotListProps = {
   slots: Slot[];
   formatTime: (date: Date) => string;
-  badgeStyles: Record<"PRIVATE" | "GROUP", string>;
   onOpenDetails: (slotId: string) => void;
 };
 
 export function AgendaSlotList({
   slots,
   formatTime,
-  badgeStyles,
   onOpenDetails,
 }: AgendaSlotListProps) {
   if (slots.length === 0) {
@@ -23,18 +20,18 @@ export function AgendaSlotList({
           Sem slots para mostrar
         </p>
         <p className="mt-1 text-sm text-slate-600">
-          Comeca por adicionar o primeiro horario no painel de acoes.
+          Comeca por adicionar o primeiro horario.
         </p>
       </section>
     );
   }
 
   return (
-    <ul className="divide-y divide-slate-100">
+    <ul className="divide-y divide-slate-100 pb-24">
       {slots.map((slot) => (
         <li
           key={slot.id}
-          className="px-5 py-6 transition-transform active:scale-95 sm:py-8"
+          className="rounded-xl px-5 py-6 transition-transform active:scale-[0.98] active:bg-slate-50 sm:py-8"
         >
           <div className="flex items-start gap-4">
             <div className="w-24 shrink-0 text-left">
@@ -45,14 +42,19 @@ export function AgendaSlotList({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <p className="truncate text-base font-semibold tracking-tight text-slate-900">
+                <p className="flex-1 truncate text-base font-semibold tracking-tight text-slate-900">
                   {slot.templateTitle}
                 </p>
-                <Badge className={badgeStyles[slot.templateType]} variant="outline">
+                <span
+                  className={`text-[10px] font-semibold uppercase tracking-wide ${
+                    slot.templateType === "GROUP" ? "text-emerald-600" : "text-sky-600"
+                  }`}
+                >
                   {slot.templateType === "GROUP" ? "Grupo" : "Privada"}
-                </Badge>
+                </span>
               </div>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-600">
+                <UserRound className="h-3.5 w-3.5 text-slate-400" />
                 {slot.templateType === "GROUP"
                   ? `${slot.booked}/${slot.capacity} vagas ocupadas`
                   : "Sessao individual"}

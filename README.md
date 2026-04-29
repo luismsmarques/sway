@@ -316,6 +316,16 @@ Isto protege contra overbooking em concorrencia.
 
 ## Release Notes
 
+### 2026-04-29 - Security hardening + Dashboard polish
+
+- Critical security fix: RLS enabled for `public.profiles`, `public.templates`, `public.slots`, and `public.bookings`.
+- Added versioned SQL migration: `supabase/migrations/20260429_rls_hardening.sql` with ownership policies for all protected tables.
+- Dashboard UI final polish on mobile:
+  - agenda items with cleaner hierarchy and minimal type badge
+  - day strip interactions and tactile active states
+  - persistent FAB for quick slot creation and improved list bottom spacing
+  - refined bottom tab bar sizing/alignment (`h-20`, 24px icons, `text-[10px]`, active `sky-500`)
+
 ### 2026-04-26 - Debug Instrumentation Cleanup
 
 - Removida toda a instrumentacao temporaria de debug adicionada durante a investigacao de loading e auth em settings.

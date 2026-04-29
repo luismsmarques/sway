@@ -10,6 +10,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { MobileAppHeader } from "@/components/ui/mobile-app-header";
 import { MobileBottomNav } from "@/components/ui/mobile-bottom-nav";
+import { createTemplateSettingsAction } from "@/app/actions";
+import { redirect } from "next/navigation";
 
 type TemplateType = "PRIVATE" | "GROUP";
 
@@ -17,6 +19,30 @@ const typeStyles: Record<TemplateType, string> = {
   PRIVATE: "bg-sky-50 text-sky-700 ring-sky-200",
   GROUP: "bg-emerald-50 text-emerald-700 ring-emerald-200",
 };
+
+async function createTemplateFromForm(formData: FormData) {
+  "use server";
+
+  const title = String(formData.get("title") ?? "").trim();
+  const rawType = String(formData.get("type") ?? "PRIVATE");
+  const durationMins = Number(formData.get("duration_mins") ?? 60);
+  const capacity = Number(formData.get("capacity") ?? 1);
+  const price = Number(formData.get("price") ?? 0);
+
+  if (!title) {
+    throw new Error("Indica um nome para o template.");
+  }
+
+  await createTemplateSettingsAction({
+    title,
+    type: rawType === "GROUP" ? "GROUP" : "PRIVATE",
+    durationMins: Number.isFinite(durationMins) ? durationMins : 60,
+    capacity: Number.isFinite(capacity) ? capacity : 1,
+    price: Number.isFinite(price) ? price : 0,
+  });
+
+  redirect("/dashboard/settings");
+}
 
 export default function NewTemplatePage() {
   return (
@@ -43,7 +69,7 @@ export default function NewTemplatePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-          <form className="space-y-6">
+          <form action={createTemplateFromForm} className="space-y-6">
             <div className="space-y-2">
               <label
                 htmlFor="title"
@@ -56,6 +82,7 @@ export default function NewTemplatePage() {
                 name="title"
                 placeholder="Ex.: Aula Surf 90min"
                 className="h-11 text-[17px]"
+                required
               />
             </div>
 
@@ -99,6 +126,7 @@ export default function NewTemplatePage() {
                   step={15}
                   defaultValue={60}
                   className="h-11 text-[17px]"
+                  required
                 />
               </div>
 
@@ -116,6 +144,7 @@ export default function NewTemplatePage() {
                   min={1}
                   defaultValue={1}
                   className="h-11 text-[17px]"
+                  required
                 />
               </div>
 
@@ -134,6 +163,7 @@ export default function NewTemplatePage() {
                   step="0.01"
                   defaultValue={0}
                   className="h-11 text-[17px]"
+                  required
                 />
               </div>
             </div>

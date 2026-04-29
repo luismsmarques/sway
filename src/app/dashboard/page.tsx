@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState, useTransition } from "react";
-import { Trash2, UserRound } from "lucide-react";
+import { Plus, Trash2, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   cancelClassAction,
@@ -36,11 +36,9 @@ import { DashboardActionBar } from "@/components/ui/dashboard/dashboard-action-b
 import { AgendaSlotList } from "@/components/ui/dashboard/agenda-slot-list";
 import {
   INFO_BADGE_STYLE,
-  TEMPLATE_BADGE_STYLES,
   WARNING_SURFACE_STYLE,
   WARNING_TEXT_STYLE,
 } from "@/components/ui/dashboard/status-tokens";
-import { uiShell } from "@/components/ui/dashboard/ui-tokens";
 import { MobileAppHeader } from "@/components/ui/mobile-app-header";
 import { MobileBottomNav } from "@/components/ui/mobile-bottom-nav";
 import { MobileSkeletonCard } from "@/components/ui/mobile-skeleton";
@@ -50,10 +48,7 @@ import {
   Slot,
   Student,
   Template,
-  TemplateType,
 } from "@/components/ui/dashboard/types";
-
-const badgeStyles: Record<TemplateType, string> = TEMPLATE_BADGE_STYLES;
 
 const dayLabel = new Intl.DateTimeFormat("pt-PT", {
   weekday: "long",
@@ -103,6 +98,7 @@ export default function InstructorDashboardPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const hasTemplates = templates.length > 0;
 
   const reload = async () => {
     setIsLoading(true);
@@ -221,14 +217,15 @@ export default function InstructorDashboardPage() {
     event.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
+    if (!hasTemplates || !selectedTemplateId) {
+      setErrorMessage("Cria primeiro um template para adicionares slots.");
+      return;
+    }
     startTransition(async () => {
       try {
         const date = startOfDay(selectedDay);
         const [h, m] = startAt.split(":").map(Number);
         date.setHours(h || 0, m || 0, 0, 0);
-        if (!selectedTemplateId) {
-          throw new Error("Cria primeiro um template para adicionares slots.");
-        }
         if (repeatEnabled) {
           const result = await createRecurringSlotsAction({
             templateId: selectedTemplateId,
@@ -254,41 +251,55 @@ export default function InstructorDashboardPage() {
         router.refresh();
         setIsDrawerOpen(false);
       } catch (error) {
-        setErrorMessage(
-          error instanceof Error ? error.message : "Falha ao criar slot.",
-        );
+        const rawMessage = error instanceof Error ? error.message : "Falha ao criar slot.";
+        const normalizedMessage =
+          rawMessage.includes("Can't reach database server") ||
+          rawMessage.includes("Invalid `") ||
+          rawMessage.includes("Error validating datasource") ||
+          rawMessage.includes("An error occurred in the Server Components render")
+            ? "Nao foi possivel ligar a base de dados. Confirma a DATABASE_URL no .env.local e reinicia o servidor local."
+            : rawMessage;
+        setErrorMessage(normalizedMessage);
       }
     });
   };
 
   return (
-    <main className="min-h-screen bg-[#F9FAFB] pb-24">
+    <main className="min-h-screen bg-slate-50 pb-24">
       <MobileAppHeader title="Agenda" />
-      <div className={`${uiShell.page} py-4 sm:py-6`}>
+      <div className="px-6 py-4 pb-24">
         {isLoading ? (
           <MobileSkeletonCard />
         ) : (
-          <section className={uiShell.card}>
+          <section className="w-full">
             <DashboardHeader formattedDate={dayLabel.format(selectedDay)} />
             <DashboardActionBar
               quickFilter={quickFilter}
-              selectedDateValue={startOfDay(selectedDay).toISOString().slice(0, 10)}
+              selectedDay={selectedDay}
               onFilterChange={setQuickFilter}
               onDateChange={(value) => setSelectedDay(new Date(value))}
-              onAddSlot={() => setIsDrawerOpen(true)}
             />
             <AgendaSlotList
               slots={filteredSlots}
               formatTime={(date) => timeLabel.format(date)}
-              badgeStyles={badgeStyles}
               onOpenDetails={setDetailsSlotId}
             />
           </section>
         )}
       </div>
+      {!isLoading ? (
+        <button
+          type="button"
+          onClick={() => setIsDrawerOpen(true)}
+          className="fixed bottom-24 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-sky-500 text-white shadow-lg shadow-sky-200 transition-transform active:scale-95"
+          aria-label="Adicionar slot"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      ) : null}
 
       <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <DrawerContent>
+        <DrawerContent className="bg-white">
           <DrawerHeader>
             <DrawerTitle className="text-2xl font-semibold tracking-tight">
               Criar slot
@@ -304,12 +315,22 @@ export default function InstructorDashboardPage() {
               className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               required
             >
-              {templates.map((template) => (
-                <option key={template.id} value={template.id}>
-                  {template.title}
-                </option>
-              ))}
+              {hasTemplates ? (
+                templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.title}
+                  </option>
+                ))
+              ) : (
+                <option value="">Sem templates disponiveis</option>
+              )}
             </select>
+            {!hasTemplates ? (
+              <p className="text-sm text-slate-600">
+                Nao tens templates ainda. Cria um em <strong>/templates/new</strong> para poderes
+                adicionar slots.
+              </p>
+            ) : null}
             <Input
               type="time"
               value={startAt}
@@ -389,7 +410,7 @@ export default function InstructorDashboardPage() {
               <Button type="button" variant="outline" onClick={() => setIsDrawerOpen(false)}>
                 Cancelar
               </Button>
-              <Button disabled={isPending}>
+              <Button disabled={isPending || !hasTemplates}>
                 {isPending ? "A guardar..." : "Guardar"}
               </Button>
             </DrawerFooter>
@@ -398,7 +419,7 @@ export default function InstructorDashboardPage() {
       </Drawer>
 
       {successMessage ? (
-        <section className={`${uiShell.page} pb-2`}>
+        <section className="px-6 pb-2">
           <p className="text-sm font-medium text-emerald-700">{successMessage}</p>
         </section>
       ) : null}

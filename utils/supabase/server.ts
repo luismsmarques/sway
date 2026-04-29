@@ -1,20 +1,21 @@
-import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey =
+const supabaseKey =
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export async function createSupabaseServerClient() {
-  if (!supabaseUrl || !supabaseAnonKey) {
+export const createClient = (
+  cookieStore: Awaited<ReturnType<typeof cookies>>,
+) => {
+  if (!supabaseUrl || !supabaseKey) {
     throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY) environment variables.",
+      "Missing NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY).",
     );
   }
-  const cookieStore = await cookies();
 
-  return createServerClient(supabaseUrl as string, supabaseAnonKey as string, {
+  return createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -25,9 +26,9 @@ export async function createSupabaseServerClient() {
             cookieStore.set(name, value, options),
           );
         } catch {
-          // Middleware handles cookie sync for Server Components.
+          // This can happen in Server Components; middleware refresh handles sync.
         }
       },
     },
   });
-}
+};
